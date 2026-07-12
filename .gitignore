@@ -1,0 +1,10 @@
+# Local secrets — never commit the real Australia Post key.
+.env
+.env.local
+.env.*.local
+
+# Vercel
+.vercel
+
+# OS / editor
+.DS_Store
