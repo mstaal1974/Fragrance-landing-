@@ -15,7 +15,7 @@ directly, or serve the folder with any static file server.
 | `styles.css` | All styling, faithful to the Claude Design handoff (dark obsidian palette, Cormorant Garamond / Hanken Grotesk / Space Mono). |
 | `data.js` | The 32‑scent fragrance library (`window.FRAGS`). |
 | `app.js` | Interactive logic — cart, sample‑box builder, drawer, checkout flow, order confirmation. |
-| `assets/` | Hero bottle image and the one product photo used by the design. |
+| `assets/` | Hero bottle image and the per‑scent product photography wired onto the cards. |
 
 ## Behaviour
 
@@ -26,7 +26,9 @@ directly, or serve the folder with any static file server.
 
 ## Notes
 
-The card artwork uses the design's gradient "liquid" swatches (with the one
-supplied product photo layered on the first scent). The repository also
-contains real product photography (`*.png` in the root) that can be wired
-into individual cards later by adding an `img` field to entries in `data.js`.
+Each card layers the real Maison Obsidian product photograph over the
+design's gradient "liquid" swatch, via the `img` field on entries in
+`data.js` (e.g. `img:"assets/erosian-desire.png"`). Four scents have no
+supplied photo yet (`Fiery Spice`, `Romance Vintage`, `Marine Absolute`,
+`Golden Elixir`) and fall back to the gradient swatch alone — drop a photo
+into `assets/` and add its `img` field to wire it in.
