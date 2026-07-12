@@ -19,8 +19,9 @@
 
 var AUSPOST_BASE = "https://digitalapi.auspost.com.au/postage/parcel/domestic/service.json";
 
-// Default parcel envelope for a boxed run of 10ml discovery bottles.
-var DEFAULTS = { weight: 0.5, length: 22, width: 16, height: 8 };
+// Fallback parcel (a single 10ml bottle) — used only if the caller omits
+// dimensions; the storefront computes the real size/weight from the order.
+var DEFAULTS = { weight: 0.035, length: 10, width: 2, height: 2 };
 
 function bad(res, status, error) {
   res.status(status).json({ ok: false, error: error });

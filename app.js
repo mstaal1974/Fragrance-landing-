@@ -14,8 +14,13 @@
   // Override the endpoint by setting window.MO_CONFIG.shippingEndpoint before this script.
   var CFG = window.MO_CONFIG || {};
   var SHIPPING_ENDPOINT = CFG.shippingEndpoint || "/api/shipping";
-  // Fixed parcel envelope (cm); weight is derived from the number of bottles.
-  var PARCEL = { length: 22, width: 16, height: 8 };
+  // Physical item specs (mm, grams). The parcel size/weight sent to Australia
+  // Post is computed from the actual contents (see parcelSpec()).
+  var ITEM = {
+    bottle: { w: 20, h: 20, g: 35 },   // single 10ml bottle, 100mm long
+    box:    { w: 100, h: 20, g: 200 },  // 5-scent sample box, 100mm long
+  };
+  var PARCEL_LEN_MM = 100;              // every item is 100mm on its longest side
 
   var state = {
     cart: {},            // { fragId: qty }
@@ -65,13 +70,32 @@
   function orderTotal() { return subtotal() + shippingCost(); }
   function money(n) { return "$" + (Math.round(n * 100) / 100).toFixed(2).replace(/\.00$/, ""); }
 
-  // Total bottles in the order (each sample box holds 5) → parcel weight (kg).
-  function bottleCount() {
-    return cartIds().reduce(function (s, id) { return s + state.cart[id]; }, 0) + state.sampleBoxes.length * 5;
-  }
-  function parcelWeight() {
-    // ~60g per boxed 10ml bottle atop 200g of packaging, min 0.2kg.
-    return Math.max(0.2, Math.round((0.2 + 0.06 * bottleCount()) * 100) / 100);
+  // Compute the parcel bounding box (cm) and weight (kg) from the actual order.
+  // Items are packed length-aligned (100mm): sample boxes stack flat (100×100
+  // footprint, 20mm each), loose bottles pack in rows of up to 5 across
+  // (5 × 20mm = 100mm, matching the box footprint), and the two blocks stack.
+  function parcelSpec() {
+    var bottles = cartIds().reduce(function (s, id) { return s + state.cart[id]; }, 0);
+    var boxes = state.sampleBoxes.length;
+
+    var boxW = boxes > 0 ? ITEM.box.w : 0;      // 100mm
+    var boxH = boxes * ITEM.box.h;              // 20mm per box
+
+    var perRow = Math.min(bottles, 5);
+    var rows = Math.ceil(bottles / 5);
+    var botW = bottles > 0 ? perRow * ITEM.bottle.w : 0;
+    var botH = rows * ITEM.bottle.h;
+
+    var widthMm = Math.max(boxW, botW) || ITEM.bottle.w;
+    var heightMm = (boxH + botH) || ITEM.bottle.h;
+    var weightG = bottles * ITEM.bottle.g + boxes * ITEM.box.g;
+
+    return {
+      length: PARCEL_LEN_MM / 10,               // mm → cm
+      width: widthMm / 10,
+      height: heightMm / 10,
+      weight: Math.max(0.02, Math.round(weightG) / 1000), // g → kg
+    };
   }
   function cartCount() {
     return cartIds().reduce(function (sum, id) { return sum + state.cart[id]; }, 0) + state.sampleBoxes.length;
@@ -280,10 +304,11 @@
     }
     var seq = ++shipSeq;
     setShipping({ status: "loading", postcode: pc, error: "" });
+    var p = parcelSpec();
     var url = SHIPPING_ENDPOINT +
       "?to_postcode=" + encodeURIComponent(pc) +
-      "&weight=" + parcelWeight() +
-      "&length=" + PARCEL.length + "&width=" + PARCEL.width + "&height=" + PARCEL.height;
+      "&weight=" + p.weight +
+      "&length=" + p.length + "&width=" + p.width + "&height=" + p.height;
     fetch(url, { headers: { Accept: "application/json" } })
       .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
       .then(function (res) {

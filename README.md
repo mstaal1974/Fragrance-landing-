@@ -34,8 +34,14 @@ shipping cost.
 
 At checkout, entering a 4‑digit Australian postcode fetches the cheapest
 domestic parcel rate from Australia Post's **Postage Assessment Calculator**
-and adds it to the order total (parcel weight is derived from the number of
-bottles; a fixed `22 × 16 × 8 cm` box is assumed).
+and adds it to the order total.
+
+The parcel size and weight are computed from the actual order (`parcelSpec()`
+in `app.js`). Each item is 100mm on its longest side, so the parcel is packed
+length‑aligned: sample boxes (`100 × 100 × 20 mm`, 200 g) stack flat, loose
+bottles (`100 × 20 × 20 mm`, 35 g) pack in rows of up to five across, and the
+two blocks stack. The resulting bounding box (cm) and summed weight (kg) are
+sent to the API. E.g. two loose bottles → `10 × 4 × 2 cm`, `0.07 kg`.
 
 The browser **cannot** call Australia Post directly — the PAC API sends no CORS
 headers and the API key must stay secret — so requests go through
