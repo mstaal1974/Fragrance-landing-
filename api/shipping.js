@@ -38,10 +38,32 @@ module.exports = async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   if (req.method === "OPTIONS") return res.status(204).end();
 
-  var key = process.env.AUSPOST_API_KEY;
-  if (!key) return bad(res, 500, "Shipping is not configured (missing AUSPOST_API_KEY).");
-
   var q = req.query || {};
+  var key = process.env.AUSPOST_API_KEY;
+  key = key ? String(key).trim() : ""; // tolerate a pasted trailing newline/space
+
+  // Safe diagnostics — never returns the key itself. Visit /api/shipping?debug=1
+  // to confirm which deployment is serving and whether it can see the key.
+  if (q.debug === "1") {
+    return res.status(200).json({
+      ok: true,
+      diagnostic: true,
+      hasKey: !!key,
+      keyLength: key.length,
+      env: process.env.VERCEL_ENV || "unknown",
+      branch: process.env.VERCEL_GIT_COMMIT_REF || "unknown",
+      commit: String(process.env.VERCEL_GIT_COMMIT_SHA || "unknown").slice(0, 7),
+      fromPostcode: process.env.AUSPOST_FROM_POSTCODE || "3000 (default)",
+    });
+  }
+
+  if (!key) {
+    var where =
+      "env=" + (process.env.VERCEL_ENV || "?") +
+      " · branch=" + (process.env.VERCEL_GIT_COMMIT_REF || "?") +
+      " · commit=" + String(process.env.VERCEL_GIT_COMMIT_SHA || "?").slice(0, 7);
+    return bad(res, 500, "AUSPOST_API_KEY is not visible to this deployment (" + where + "). Redeploy after adding it, and open the newest deployment URL.");
+  }
   var toPostcode = String(q.to_postcode || "").trim();
   if (!/^\d{4}$/.test(toPostcode)) return bad(res, 400, "A valid 4-digit Australian postcode is required.");
 
