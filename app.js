@@ -10,6 +10,13 @@
   var PRICE = 12;
   var BOX_PRICE = 50;
 
+  // Live shipping via the Australia Post PAC proxy (see api/shipping.js).
+  // Override the endpoint by setting window.MO_CONFIG.shippingEndpoint before this script.
+  var CFG = window.MO_CONFIG || {};
+  var SHIPPING_ENDPOINT = CFG.shippingEndpoint || "/api/shipping";
+  // Fixed parcel envelope (cm); weight is derived from the number of bottles.
+  var PARCEL = { length: 22, width: 16, height: 8 };
+
   var state = {
     cart: {},            // { fragId: qty }
     sampleSelection: [], // up to 5 frag ids
@@ -22,7 +29,12 @@
       email: "", fullName: "", address: "", city: "", region: "",
       zip: "", country: "", cardNumber: "", cardExpiry: "", cardCvc: "",
     },
+    // Australia Post shipping quote for the current postcode.
+    // status: idle | loading | ready | error
+    shipping: { status: "idle", cost: 0, service: "", postcode: "", error: "" },
   };
+  var shipTimer = null;   // debounce handle for postcode-driven quotes
+  var shipSeq = 0;        // guards against out-of-order responses
 
   /* ---------- helpers ---------- */
   function $(sel, root) { return (root || document).querySelector(sel); }
@@ -49,6 +61,18 @@
   function bottleSubtotal() { return cartIds().reduce(function (sum, id) { return sum + state.cart[id] * PRICE; }, 0); }
   function boxSubtotal() { return state.sampleBoxes.length * BOX_PRICE; }
   function subtotal() { return bottleSubtotal() + boxSubtotal(); }
+  function shippingCost() { return state.shipping.status === "ready" ? state.shipping.cost : 0; }
+  function orderTotal() { return subtotal() + shippingCost(); }
+  function money(n) { return "$" + (Math.round(n * 100) / 100).toFixed(2).replace(/\.00$/, ""); }
+
+  // Total bottles in the order (each sample box holds 5) → parcel weight (kg).
+  function bottleCount() {
+    return cartIds().reduce(function (s, id) { return s + state.cart[id]; }, 0) + state.sampleBoxes.length * 5;
+  }
+  function parcelWeight() {
+    // ~60g per boxed 10ml bottle atop 200g of packaging, min 0.2kg.
+    return Math.max(0.2, Math.round((0.2 + 0.06 * bottleCount()) * 100) / 100);
+  }
   function cartCount() {
     return cartIds().reduce(function (sum, id) { return sum + state.cart[id]; }, 0) + state.sampleBoxes.length;
   }
@@ -238,10 +262,70 @@
     });
     return html;
   }
+  /* ---------- shipping (Australia Post PAC via /api/shipping) ---------- */
+  function setShipping(patch) {
+    for (var k in patch) state.shipping[k] = patch[k];
+    if (state.view === "checkout") renderCheckout();
+  }
+  function scheduleShippingQuote() {
+    if (shipTimer) clearTimeout(shipTimer);
+    shipTimer = setTimeout(requestShippingQuote, 450);
+  }
+  function requestShippingQuote() {
+    var pc = String(state.checkoutForm.zip || "").trim();
+    if (!/^\d{4}$/.test(pc) || !hasAnyItems()) {
+      shipSeq++; // cancel any in-flight response
+      setShipping({ status: "idle", cost: 0, service: "", postcode: pc, error: "" });
+      return;
+    }
+    var seq = ++shipSeq;
+    setShipping({ status: "loading", postcode: pc, error: "" });
+    var url = SHIPPING_ENDPOINT +
+      "?to_postcode=" + encodeURIComponent(pc) +
+      "&weight=" + parcelWeight() +
+      "&length=" + PARCEL.length + "&width=" + PARCEL.width + "&height=" + PARCEL.height;
+    fetch(url, { headers: { Accept: "application/json" } })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (seq !== shipSeq) return; // superseded by a newer request
+        if (res.ok && res.d && res.d.ok) {
+          setShipping({ status: "ready", cost: res.d.price, service: res.d.service, error: "" });
+        } else {
+          setShipping({ status: "error", cost: 0, service: "", error: (res.d && res.d.error) || "Shipping unavailable." });
+        }
+      })
+      .catch(function () {
+        if (seq !== shipSeq) return;
+        setShipping({ status: "error", cost: 0, service: "", error: "Couldn't reach the shipping service." });
+      });
+  }
+  function renderShipping() {
+    var s = state.shipping;
+    var cell = $("[data-summary-shipping]");
+    var note = $("[data-summary-shipping-note]");
+    note.classList.remove("dd-summary__ship-note--error");
+    if (s.status === "ready") {
+      cell.textContent = money(s.cost);
+      note.hidden = false;
+      note.textContent = "Australia Post · " + s.service;
+    } else if (s.status === "loading") {
+      cell.textContent = "Calculating…";
+      note.hidden = true;
+    } else if (s.status === "error") {
+      cell.textContent = "Unavailable";
+      note.hidden = false;
+      note.textContent = s.error;
+      note.classList.add("dd-summary__ship-note--error");
+    } else {
+      cell.textContent = "Enter postcode";
+      note.hidden = true;
+    }
+  }
   function renderCheckout() {
     $("[data-summary-lines]").innerHTML = checkoutSummaryHTML();
-    var total = "$" + subtotal();
-    $("[data-summary-subtotal]").textContent = total;
+    $("[data-summary-subtotal]").textContent = money(subtotal());
+    renderShipping();
+    var total = money(orderTotal());
     $("[data-summary-total]").textContent = total;
     $("[data-place-order]").textContent = "Place Order · " + total;
     $("[data-form-error]").hidden = !state.showFormError;
@@ -254,6 +338,7 @@
     closeDrawer();
     renderCheckout();
     setView("checkout");
+    requestShippingQuote(); // quote immediately if a postcode is already entered
   }
   function placeOrder() {
     var f = state.checkoutForm;
@@ -280,6 +365,8 @@
       email: "", fullName: "", address: "", city: "", region: "",
       zip: "", country: "", cardNumber: "", cardExpiry: "", cardCvc: "",
     };
+    state.shipping = { status: "idle", cost: 0, service: "", postcode: "", error: "" };
+    shipSeq++;
     closeDrawer();
     renderCards();
     updateHeader();
@@ -317,7 +404,9 @@
     // checkout form inputs
     $all("[data-field]").forEach(function (input) {
       input.addEventListener("input", function () {
-        state.checkoutForm[input.getAttribute("data-field")] = input.value;
+        var field = input.getAttribute("data-field");
+        state.checkoutForm[field] = input.value;
+        if (field === "zip") scheduleShippingQuote();
         if (state.showFormError) {
           state.showFormError = false;
           $("[data-form-error]").hidden = true;
