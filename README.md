@@ -24,9 +24,14 @@ directly, or serve the folder with any static file server.
 - **Cart drawer** shows bottles and boxes with live subtotal.
 - **Checkout** is a simulated private preview — no real payment is processed.
 
-## Notes
+## Product photography
 
-The card artwork uses the design's gradient "liquid" swatches (with the one
-supplied product photo layered on the first scent). The repository also
-contains real product photography (`*.png` in the root) that can be wired
-into individual cards later by adding an `img` field to entries in `data.js`.
+28 of the 32 scents show a real product photo (clean-named copies live in
+`assets/products/`, mapped to each scent by its `img` field in `data.js`).
+Photos are studio shots on white, so cards render them in a white "product
+frame" (contain-fit) that sits cleanly against the dark theme.
+
+Four scents have no supplied photo (Spicebomb Extreme, YSL Paris, Acqua di
+Giò Absolu, Le Male Elixir) and fall back to the design's gradient "liquid"
+swatch. To add one, drop the image in `assets/products/` and set the `img`
+field on that entry in `data.js`.

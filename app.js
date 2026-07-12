@@ -114,11 +114,13 @@
     var inSample = state.sampleSelection.indexOf(f.id) >= 0;
     var sampleFull = state.sampleSelection.length >= 5 && !inSample;
 
-    var media =
-      '<div class="dd-card__media">' +
-        '<div class="dd-card__swatch" style="background:' + swatchGradient(f.liquid) + '"></div>' +
-        (f.img ? '<img class="dd-card__img" src="' + esc(f.img) + '" alt="' + esc(f.name) + '" loading="lazy">' : '') +
-      '</div>';
+    var media = f.img
+      ? '<div class="dd-card__media dd-card__media--photo">' +
+          '<img class="dd-card__img" src="' + esc(f.img) + '" alt="' + esc(f.name) + ' — inspired by ' + esc(f.insp) + '" loading="lazy">' +
+        '</div>'
+      : '<div class="dd-card__media">' +
+          '<div class="dd-card__swatch" style="background:' + swatchGradient(f.liquid) + '"></div>' +
+        '</div>';
 
     var action = qty > 0
       ? '<div class="dd-qty">' +

@@ -200,9 +200,10 @@ body {
 
 /* ---------- FRAGRANCE CARD ---------- */
 .dd-card { background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; }
-.dd-card__media { position: relative; height: 110px; overflow: hidden; }
+.dd-card__media { position: relative; height: 200px; overflow: hidden; }
+.dd-card__media--photo { background: #ffffff; }
 .dd-card__swatch { position: absolute; inset: 0; }
-.dd-card__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.dd-card__img { width: 100%; height: 100%; object-fit: contain; padding: 14px; }
 .dd-card__body { padding: 18px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
 .dd-card__insp { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
 .dd-card__name { font-family: var(--serif); font-size: 23px; line-height: 1.1; color: var(--cream-hi); margin-top: -2px; }
