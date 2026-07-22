@@ -21,6 +21,8 @@ shipping cost.
 | `api/checkout.js` | Vercel serverless function that creates a Stripe Checkout Session (prices recomputed server‑side) and returns the hosted payment URL. |
 | `api/order.js` | Vercel serverless function that verifies a Stripe session on return, so the confirmation screen only shows after a real payment. |
 | `api/webhook.js` | Vercel serverless function that receives Stripe webhooks (signature‑verified) and fulfils paid orders — the reliable source of truth even if the buyer never returns. |
+| `api/_supabase.js` | Shared helper that upserts orders into Supabase via its REST API (service‑role key, server‑side only). |
+| `supabase/schema.sql` | One‑time SQL to create the `orders` table (run in the Supabase SQL editor). |
 | `api/shipping.js` | Vercel serverless proxy to the Australia Post PAC domestic‑parcel API. |
 | `api/_auspost.js` | Shared Australia Post quote helper used by `shipping.js` and `checkout.js`. |
 | `assets/` | Hero bottle image and the per‑scent product photography wired onto the cards. |
@@ -82,11 +84,9 @@ stale, then calls `fulfilOrder(session)`.
 
 `checkout.js` attaches order details to the session as `metadata` (buyer name,
 shipping address, postcode, and an item summary), so the webhook can act without
-a database. There's no mailer/DB in this project, so `fulfilOrder` currently
-logs the order to the Vercel function logs — replace it with your real
-fulfilment (email a packing slip, append to a sheet, write to a DB). Stripe can
-deliver an event more than once, so make that step idempotent (key off
-`session.id`).
+re‑reading anything. `fulfilOrder` then **saves the order to Supabase** (see
+below). Stripe can deliver an event more than once, so the write is an
+idempotent upsert keyed on the Stripe session id.
 
 **Setup:**
 
@@ -102,6 +102,36 @@ deliver an event more than once, so make that step idempotent (key off
 
 Body parsing is disabled for this route (`config.api.bodyParser = false`) because
 signature verification needs the exact raw bytes Stripe signed.
+
+### Storing orders (Supabase)
+
+Paid orders are written to a Supabase Postgres table by the webhook, via
+`api/_supabase.js`, which calls Supabase's REST API with `fetch` (no
+`@supabase/supabase-js` dependency). It uses the **service_role** key, which
+bypasses Row Level Security — so it lives only in the serverless function and is
+never exposed to the browser. The write is an idempotent upsert on
+`stripe_session_id`.
+
+If `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` are unset, the webhook still
+verifies and returns 200 — it just logs the order instead of saving it, so
+nothing breaks before the database is wired up.
+
+**Setup:**
+
+1. Create a project at <https://supabase.com/>.
+2. Supabase Dashboard → **SQL → New query**, paste `supabase/schema.sql`, run it.
+   That creates the `orders` table (with a unique `stripe_session_id` and RLS
+   enabled — no public access).
+3. Supabase → **Settings → API**: copy the **Project URL** and the
+   **`service_role`** key.
+4. In Vercel → Settings → Environment Variables, set `SUPABASE_URL` and
+   `SUPABASE_SERVICE_ROLE_KEY` (Production), then redeploy.
+5. Place a test order — the row appears in **Table editor → orders**.
+
+The `orders` columns mirror the session metadata (`email`, `name`,
+`amount_total` in cents, `currency`, `items`, `ship_*`, `status`,
+`stripe_session_id`, `payment_intent_id`, `created_at`). To email a receipt as
+well, add a mailer call inside `fulfilOrder` after the Supabase write.
 
 ## Shipping (Australia Post PAC)
 
