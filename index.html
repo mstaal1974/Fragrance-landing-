@@ -169,14 +169,10 @@
 
             <div class="dd-form__block">
               <div class="dd-form__label">Payment</div>
-              <div class="dd-form__rows">
-                <input type="text" class="dd-input" data-field="cardNumber" placeholder="Card number" inputmode="numeric" autocomplete="cc-number">
-                <div class="dd-form__pair">
-                  <input type="text" class="dd-input" data-field="cardExpiry" placeholder="MM / YY" autocomplete="cc-exp">
-                  <input type="text" class="dd-input" data-field="cardCvc" placeholder="CVC" inputmode="numeric" autocomplete="cc-csc">
-                </div>
+              <div class="dd-form__secure">
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.2" stroke="#c9a961" stroke-width="1.1"/><path d="M5.2 7V5a2.8 2.8 0 0 1 5.6 0v2" stroke="#c9a961" stroke-width="1.1"/></svg>
+                <p>Card details are entered on Stripe's secure checkout after you place the order. We never see or store your card — only Stripe does.</p>
               </div>
-              <p class="dd-form__note">This is a private preview — no real payment is processed here.</p>
             </div>
           </div>
 
@@ -194,7 +190,8 @@
               <span class="dd-summary__total-val" data-summary-total>$0</span>
             </div>
             <button type="button" class="dd-btn-gold dd-btn-gold--block" data-place-order>Place Order · $0</button>
-            <p class="dd-form__error" data-form-error hidden>Please fill in your email, shipping address, and payment details.</p>
+            <p class="dd-summary__secure-note">Secured by Stripe · you'll confirm payment on the next step.</p>
+            <p class="dd-form__error" data-form-error hidden>Please fill in your email and shipping address.</p>
           </div>
         </div>
       </div>

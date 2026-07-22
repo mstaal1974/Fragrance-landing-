@@ -250,6 +250,16 @@ body {
 .dd-form__triple { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 12px; }
 .dd-form__pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .dd-form__note { margin: 12px 0 0; font-size: 11px; line-height: 1.6; color: rgba(243,236,220,0.4); }
+.dd-form__secure {
+  margin-top: 14px; display: flex; align-items: flex-start; gap: 10px;
+  padding: 14px 16px; background: var(--panel); border: 1px solid var(--line);
+}
+.dd-form__secure svg { flex: none; margin-top: 1px; }
+.dd-form__secure p { margin: 0; font-size: 12px; line-height: 1.6; color: rgba(243,236,220,0.62); }
+.dd-summary__secure-note {
+  margin: 12px 0 0; text-align: center; font-family: var(--mono);
+  font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(243,236,220,0.4);
+}
 .dd-input {
   width: 100%; background: var(--panel); border: 1px solid var(--line); outline: none; padding: 14px 16px;
   color: var(--cream); font-family: var(--sans); font-size: 14px; transition: border-color 0.18s ease;
