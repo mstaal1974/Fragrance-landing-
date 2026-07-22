@@ -21,6 +21,7 @@
  */
 
 var crypto = require("crypto");
+var supabase = require("./_supabase");
 
 var TOLERANCE_SECONDS = 300; // reject events older than 5 min (replay guard)
 
@@ -74,27 +75,38 @@ function verifySignature(rawBody, header, secret) {
 }
 
 /* ── Fulfilment ──────────────────────────────────────────────────────────
- * Fires once payment is confirmed. There is no database or mailer wired into
- * this project, so for now it records the order to the Vercel function logs.
- * Replace the body with your real fulfilment — email a packing slip, append to
- * a sheet, write to a DB.
+ * Fires once payment is confirmed. Persists the order to Supabase as an
+ * idempotent upsert keyed on the Stripe session id, so Stripe re-delivering
+ * the same event updates one row rather than inserting duplicates. If Supabase
+ * isn't configured yet, it falls back to logging so nothing is silently lost.
  *
- * IMPORTANT: Stripe may deliver the same event more than once. Make this
- * idempotent in production — key off session.id (or event.id) and skip if
- * you've already fulfilled it.
+ * Throwing here makes the handler return 500, which asks Stripe to retry — the
+ * upsert makes that retry safe.
  */
 async function fulfilOrder(session) {
   var d = session.customer_details || {};
   var m = session.metadata || {};
-  console.log("[order paid] " + JSON.stringify({
-    session: session.id,
-    amount_total: session.amount_total,
-    currency: session.currency,
-    email: d.email || session.customer_email || "",
-    name: d.name || m.ship_name || "",
-    ship_to: [m.ship_address, m.ship_city, m.ship_postcode].filter(Boolean).join(", "),
-    items: m.items || "",
-  }));
+  var order = {
+    stripe_session_id: session.id,
+    payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
+    email: d.email || session.customer_email || null,
+    name: d.name || m.ship_name || null,
+    amount_total: typeof session.amount_total === "number" ? session.amount_total : null,
+    currency: session.currency || null,
+    items: m.items || null,
+    ship_address: m.ship_address || null,
+    ship_city: m.ship_city || null,
+    ship_region: m.ship_region || null,
+    ship_postcode: m.ship_postcode || null,
+    status: "paid",
+  };
+
+  if (supabase.isConfigured()) {
+    await supabase.saveOrder(order); // idempotent upsert on stripe_session_id
+    console.log("[order paid] saved to Supabase: " + session.id);
+  } else {
+    console.log("[order paid] (Supabase not configured) " + JSON.stringify(order));
+  }
 }
 
 module.exports = async function handler(req, res) {
