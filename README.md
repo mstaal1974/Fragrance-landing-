@@ -17,8 +17,12 @@ shipping cost.
 | `index.html` | Page markup: header, hero, sample‑box builder, three collections, checkout, confirmation, cart drawer. |
 | `styles.css` | All styling, faithful to the Claude Design handoff (dark obsidian palette, Cormorant Garamond / Hanken Grotesk / Space Mono). |
 | `data.js` | The 32‑scent fragrance library (`window.FRAGS`). |
-| `app.js` | Interactive logic — cart, sample‑box builder, drawer, checkout flow, live shipping, order confirmation. |
+| `app.js` | Interactive logic — cart, sample‑box builder, drawer, checkout flow, live shipping, Stripe redirect, order confirmation. |
+| `api/checkout.js` | Vercel serverless function that creates a Stripe Checkout Session (prices recomputed server‑side) and returns the hosted payment URL. |
+| `api/order.js` | Vercel serverless function that verifies a Stripe session on return, so the confirmation screen only shows after a real payment. |
+| `api/webhook.js` | Vercel serverless function that receives Stripe webhooks (signature‑verified) and fulfils paid orders — the reliable source of truth even if the buyer never returns. |
 | `api/shipping.js` | Vercel serverless proxy to the Australia Post PAC domestic‑parcel API. |
+| `api/_auspost.js` | Shared Australia Post quote helper used by `shipping.js` and `checkout.js`. |
 | `assets/` | Hero bottle image and the per‑scent product photography wired onto the cards. |
 
 ## Behaviour
@@ -28,7 +32,76 @@ shipping cost.
 - **Cart drawer** shows bottles and boxes with live subtotal.
 - **Shipping** is quoted live from **Australia Post** once a valid AU postcode
   is entered at checkout (see below).
-- **Checkout** is a simulated private preview — no real payment is processed.
+- **Checkout** takes real payment through **Stripe** — see below.
+
+## Payments (Stripe)
+
+Checkout uses **Stripe Checkout** in its hosted (redirect) mode. Pressing
+**Place Order** POSTs the bag to `api/checkout.js`, which recomputes every
+amount server‑side — item prices from fixed constants (`$12` per bottle, `$50`
+per box) and shipping from Australia Post — creates a Stripe Checkout Session,
+and returns its URL. The browser is redirected to Stripe's secure page to enter
+card details, so **no card data ever touches this site** (PCI SAQ A).
+
+On success Stripe returns the buyer to `/?paid={CHECKOUT_SESSION_ID}`;
+`app.js` then calls `api/order.js`, which retrieves the session server‑side and
+only shows the confirmation once Stripe reports `payment_status: "paid"` (the
+redirect alone is never trusted). Cancelling on Stripe returns to
+`/?checkout=cancelled` with the bag intact.
+
+**Setup (Vercel):**
+
+1. Get your keys from the Stripe Dashboard (start in **test mode**).
+2. In your Vercel project → **Settings → Environment Variables**, set:
+   - `STRIPE_SECRET_KEY` — `sk_test_…` (or `sk_live_…` when live). Required.
+   - `STRIPE_CURRENCY` — ISO code, optional, defaults to `aud`.
+   - `STRIPE_RETURN_ORIGIN` — optional; only to pin a canonical domain.
+   See `.env.example`. Redeploy after adding variables.
+3. Test with Stripe's card `4242 4242 4242 4242`, any future expiry and CVC.
+
+To point the front‑end at different endpoints, set
+`window.MO_CONFIG = { checkoutEndpoint: "…", orderEndpoint: "…" }` before
+`app.js` loads. If `STRIPE_SECRET_KEY` is missing, Place Order surfaces a clear
+error instead of proceeding.
+
+**Switching to on‑page card fields:** this uses hosted redirect (simplest, most
+secure). To keep buyers on the page instead, swap to Stripe's embedded
+**Payment Element** — load `stripe.js`, have `checkout.js` create a
+PaymentIntent (returning its `client_secret`), and mount the element in the
+Payment block. The server‑side price recomputation stays the same.
+
+### Webhook fulfilment (recommended)
+
+The return page (`api/order.js`) is fine for showing a confirmation, but a buyer
+can pay and then close the tab before the redirect — so it must not be the only
+record that an order happened. `api/webhook.js` receives Stripe's
+`checkout.session.completed` event server‑to‑server and is the reliable place to
+fulfil. It verifies the `Stripe‑Signature` header with an HMAC‑SHA256 of
+`${timestamp}.${rawBody}` (Node `crypto`, no SDK), rejects anything unsigned or
+stale, then calls `fulfilOrder(session)`.
+
+`checkout.js` attaches order details to the session as `metadata` (buyer name,
+shipping address, postcode, and an item summary), so the webhook can act without
+a database. There's no mailer/DB in this project, so `fulfilOrder` currently
+logs the order to the Vercel function logs — replace it with your real
+fulfilment (email a packing slip, append to a sheet, write to a DB). Stripe can
+deliver an event more than once, so make that step idempotent (key off
+`session.id`).
+
+**Setup:**
+
+1. Deploy, so `https://<your-domain>/api/webhook` exists.
+2. Stripe Dashboard → **Developers → Webhooks → Add endpoint**. URL =
+   `https://maisonobsidian.com.au/api/webhook`; select event
+   `checkout.session.completed` (optionally `checkout.session.async_payment_succeeded`).
+3. Copy the endpoint's **Signing secret** (`whsec_…`) into Vercel as
+   `STRIPE_WEBHOOK_SECRET`, then redeploy.
+4. Test locally with the Stripe CLI: `stripe listen --forward-to
+   localhost:3000/api/webhook` then `stripe trigger checkout.session.completed`.
+   The CLI prints its own `whsec_…` to use while listening.
+
+Body parsing is disabled for this route (`config.api.bodyParser = false`) because
+signature verification needs the exact raw bytes Stripe signed.
 
 ## Shipping (Australia Post PAC)
 
@@ -67,7 +140,7 @@ merchandise subtotal only.
 
 Each card layers the real Maison Obsidian product photograph over the
 design's gradient "liquid" swatch, via the `img` field on entries in
-`data.js` (e.g. `img:"assets/erosian-desire.png"`). Four scents have no
-supplied photo yet (`Fiery Spice`, `Romance Vintage`, `Marine Absolute`,
-`Golden Elixir`) and fall back to the gradient swatch alone — drop a photo
-into `assets/` and add its `img` field to wire it in.
+`data.js` (e.g. `img:"assets/erosian-desire.png"`). All 32 scents now have a
+photo wired in; the product images have transparent backgrounds so the bottles
+sit directly on the dark cards. To add or swap one, drop a PNG into `assets/`
+and set its `img` field.

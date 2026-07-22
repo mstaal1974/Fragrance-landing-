@@ -14,6 +14,10 @@
   // Override the endpoint by setting window.MO_CONFIG.shippingEndpoint before this script.
   var CFG = window.MO_CONFIG || {};
   var SHIPPING_ENDPOINT = CFG.shippingEndpoint || "/api/shipping";
+  // Stripe Checkout (hosted redirect). checkoutEndpoint creates the session;
+  // orderEndpoint verifies payment when Stripe redirects the buyer back.
+  var CHECKOUT_ENDPOINT = CFG.checkoutEndpoint || "/api/checkout";
+  var ORDER_ENDPOINT = CFG.orderEndpoint || "/api/order";
   // Physical item specs (mm, grams). The parcel size/weight sent to Australia
   // Post is computed from the actual contents (see parcelSpec()).
   var ITEM = {
@@ -32,7 +36,7 @@
     showFormError: false,
     checkoutForm: {
       email: "", fullName: "", address: "", city: "", region: "",
-      zip: "", country: "", cardNumber: "", cardExpiry: "", cardCvc: "",
+      zip: "", country: "",
     },
     // Australia Post shipping quote for the current postcode.
     // status: idle | loading | ready | error
@@ -365,20 +369,122 @@
     setView("checkout");
     requestShippingQuote(); // quote immediately if a postcode is already entered
   }
+  // Build the cart payload for /api/checkout. Only quantities/labels are sent —
+  // the server recomputes every amount, so the client cannot set its own price.
+  function orderPayload() {
+    var p = parcelSpec();
+    return {
+      email: String(state.checkoutForm.email || "").trim(),
+      to_postcode: String(state.checkoutForm.zip || "").trim(),
+      ship_name: String(state.checkoutForm.fullName || "").trim(),
+      ship_address: String(state.checkoutForm.address || "").trim(),
+      ship_city: String(state.checkoutForm.city || "").trim(),
+      ship_region: String(state.checkoutForm.region || "").trim(),
+      parcel: { weight: p.weight, length: p.length, width: p.width, height: p.height },
+      bottles: cartIds().map(function (id) {
+        return { name: fragById(id).name, qty: state.cart[id] };
+      }),
+      boxes: state.sampleBoxes.map(function (b) {
+        return { names: b.items.map(function (id) { return fragById(id).name; }).join(", ") };
+      }),
+    };
+  }
+
+  function showCheckoutError(msg) {
+    state.showFormError = true;
+    var el = $("[data-form-error]");
+    el.textContent = msg;
+    el.hidden = false;
+  }
+
   function placeOrder() {
     var f = state.checkoutForm;
-    var required = [f.email, f.fullName, f.address, f.city, f.zip, f.cardNumber, f.cardExpiry, f.cardCvc];
-    if (required.some(function (v) { return !v.trim(); })) {
-      state.showFormError = true;
-      $("[data-form-error]").hidden = false;
-      return;
+    var required = [f.email, f.fullName, f.address, f.city, f.zip];
+    if (required.some(function (v) { return !String(v).trim(); }) || !hasAnyItems()) {
+      return showCheckoutError("Please fill in your email and shipping address.");
     }
-    state.orderNumber = "MO-" + Math.floor(10000 + Math.random() * 89999);
-    $("[data-confirm-order]").textContent = state.orderNumber;
-    $("[data-confirm-ship]").textContent =
-      "Shipping to " + f.fullName + ", " + f.address + ", " + f.city +
-      ". Your 10ml bottles ship this week — thank you for trying Maison Obsidian first.";
-    setView("confirmed");
+
+    var btn = $("[data-place-order]");
+    if (btn.disabled) return; // guard against double-submit
+    var label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Redirecting to secure checkout…";
+
+    // Stash the shipping name/address so the confirmation screen can greet the
+    // buyer by name after the round-trip back from Stripe (payment is still
+    // verified server-side before anything is shown).
+    try {
+      sessionStorage.setItem("mo_pending", JSON.stringify({
+        orderNumber: "MO-" + Math.floor(10000 + Math.random() * 89999),
+        fullName: f.fullName, address: f.address, city: f.city,
+      }));
+    } catch (e) { /* private mode — confirmation falls back to session data */ }
+
+    fetch(CHECKOUT_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(orderPayload()),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (res.ok && res.d && res.d.ok && res.d.url) {
+          window.location.href = res.d.url; // → Stripe hosted checkout
+        } else {
+          throw new Error((res.d && res.d.error) || "Could not start checkout. Please try again.");
+        }
+      })
+      .catch(function (err) {
+        btn.disabled = false;
+        btn.textContent = label;
+        showCheckoutError(err.message || "Could not start checkout. Please try again.");
+      });
+  }
+
+  /* ---------- return from Stripe ---------- */
+  function cleanUrl() {
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }
+  function handleReturn() {
+    var params = new URLSearchParams(window.location.search);
+    var paid = params.get("paid");
+    if (paid) return verifyAndConfirm(paid);
+    if (params.get("checkout") === "cancelled") {
+      // Buyer backed out on Stripe — return them to checkout, cart intact.
+      cleanUrl();
+      renderCheckout();
+      setView("checkout");
+    }
+  }
+  function verifyAndConfirm(sessionId) {
+    fetch(ORDER_ENDPOINT + "?session_id=" + encodeURIComponent(sessionId), { headers: { Accept: "application/json" } })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        cleanUrl();
+        if (!(d && d.ok && d.paid)) { setView("shop"); return; }
+
+        var stash = {};
+        try { stash = JSON.parse(sessionStorage.getItem("mo_pending") || "{}"); } catch (e) { /* ignore */ }
+        var order = d.order || {};
+        var num = stash.orderNumber || ("MO-" + String(sessionId).slice(-5).toUpperCase());
+        $("[data-confirm-order]").textContent = num;
+
+        var name = stash.fullName || order.name || "";
+        var ship = name
+          ? "Shipping to " + name + (stash.address ? ", " + stash.address : "") + (stash.city ? ", " + stash.city : "") +
+            ". Your 10ml bottles ship this week — thank you for trying Maison Obsidian first."
+          : "Payment received. Your 10ml bottles ship this week — thank you for trying Maison Obsidian first.";
+        $("[data-confirm-ship]").textContent = ship;
+
+        // Order is placed — empty the bag.
+        state.cart = {}; state.sampleBoxes = []; state.sampleSelection = [];
+        try { sessionStorage.removeItem("mo_pending"); } catch (e) { /* ignore */ }
+        updateHeader();
+        renderCards();
+        setView("confirmed");
+      })
+      .catch(function () { cleanUrl(); setView("shop"); });
   }
   function continueShopping() {
     state.cart = {};
@@ -388,7 +494,7 @@
     state.showFormError = false;
     state.checkoutForm = {
       email: "", fullName: "", address: "", city: "", region: "",
-      zip: "", country: "", cardNumber: "", cardExpiry: "", cardCvc: "",
+      zip: "", country: "",
     };
     state.shipping = { status: "idle", cost: 0, service: "", postcode: "", error: "" };
     shipSeq++;
@@ -449,4 +555,5 @@
   renderCards();
   updateHeader();
   wire();
+  handleReturn(); // resume confirmation / cancellation after a Stripe redirect
 })();
