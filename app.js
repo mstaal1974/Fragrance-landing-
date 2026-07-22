@@ -376,6 +376,10 @@
     return {
       email: String(state.checkoutForm.email || "").trim(),
       to_postcode: String(state.checkoutForm.zip || "").trim(),
+      ship_name: String(state.checkoutForm.fullName || "").trim(),
+      ship_address: String(state.checkoutForm.address || "").trim(),
+      ship_city: String(state.checkoutForm.city || "").trim(),
+      ship_region: String(state.checkoutForm.region || "").trim(),
       parcel: { weight: p.weight, length: p.length, width: p.width, height: p.height },
       bottles: cartIds().map(function (id) {
         return { name: fragById(id).name, qty: state.cart[id] };

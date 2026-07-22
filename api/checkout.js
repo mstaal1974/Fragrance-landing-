@@ -70,6 +70,7 @@ module.exports = async function handler(req, res) {
 
   // ---- recompute line items from quantities (never trust client prices) ----
   var line_items = [];
+  var summary = []; // human-readable order line for webhook fulfilment metadata
   (Array.isArray(body.bottles) ? body.bottles : []).forEach(function (b) {
     var qty = Math.min(MAX_QTY, Math.max(0, parseInt(b && b.qty, 10) || 0));
     if (!qty) return;
@@ -82,6 +83,7 @@ module.exports = async function handler(req, res) {
         product_data: { name: name + " — 10ml" },
       },
     });
+    summary.push(qty + "× " + name);
   });
   (Array.isArray(body.boxes) ? body.boxes : []).forEach(function (bx) {
     var names = String((bx && bx.names) || "").slice(0, 250);
@@ -91,13 +93,28 @@ module.exports = async function handler(req, res) {
       quantity: 1,
       price_data: { currency: CURRENCY, unit_amount: BOX_PRICE, product_data: product },
     });
+    summary.push("Sample Box" + (names ? " (" + names + ")" : ""));
   });
 
   if (!line_items.length) return bad(res, 400, "Your bag is empty.");
 
+  var pc = String(body.to_postcode || "").trim();
+
+  // ---- order metadata (so the webhook can fulfil without a database) ----
+  var metadata = {};
+  function meta(key, val, max) {
+    val = String(val || "").trim();
+    if (val) metadata[key] = val.slice(0, max);
+  }
+  meta("ship_name", body.ship_name, 200);
+  meta("ship_address", body.ship_address, 200);
+  meta("ship_city", body.ship_city, 100);
+  meta("ship_region", body.ship_region, 100);
+  if (/^\d{4}$/.test(pc)) metadata.ship_postcode = pc;
+  meta("items", summary.join("; "), 490);
+
   // ---- recompute shipping server-side; omit (don't fail) if unavailable ----
   var shipping_options = [];
-  var pc = String(body.to_postcode || "").trim();
   if (/^\d{4}$/.test(pc)) {
     var parcel = body.parcel || {};
     var quote = await auspost.quoteCheapest({
@@ -128,6 +145,10 @@ module.exports = async function handler(req, res) {
   if (shipping_options.length) payload.shipping_options = shipping_options;
   var email = String(body.email || "").trim();
   if (email) payload.customer_email = email.slice(0, 200);
+  if (Object.keys(metadata).length) {
+    payload.metadata = metadata;                       // on the Checkout Session
+    payload.payment_intent_data = { metadata: metadata }; // mirror onto the payment
+  }
 
   var resp, session;
   try {
