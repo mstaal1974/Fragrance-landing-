@@ -81,7 +81,7 @@ body {
 .dd-cart-btn {
   display: flex; align-items: center; gap: 9px; border: 1px solid var(--line); height: 40px;
   padding: 0 15px; background: none; color: var(--cream); cursor: pointer; flex-shrink: 0;
-  transition: border-color 0.18s ease;
+  transition: border-color 0.18s ease, transform 140ms ease-out;
 }
 .dd-cart-btn:hover { border-color: rgba(201,169,97,0.5); }
 .dd-cart-btn__count { font-family: var(--mono); font-size: 12px; color: var(--cream); }
@@ -142,13 +142,41 @@ body {
   display: inline-flex; align-items: center; justify-content: center; gap: 10px;
   background: var(--gold); color: var(--bg); border: 0; cursor: pointer;
   font-size: 11px; letter-spacing: 0.26em; text-transform: uppercase; font-weight: 600;
-  font-family: var(--sans); transition: background 0.18s ease;
+  font-family: var(--sans); transition: background 0.18s ease, transform 140ms ease-out;
 }
 .dd-btn-gold:hover { background: var(--gold-hi); }
 .dd-btn-gold--lg { height: 50px; padding: 0 26px; }
 .dd-btn-gold--block { width: 100%; height: 52px; letter-spacing: 0.24em; }
 .dd-btn-gold--mt { margin-top: 16px; }
 .dd-confirm .dd-btn-gold--lg { height: 52px; padding: 0 30px; margin-top: 34px; letter-spacing: 0.24em; }
+
+/* ---------- PRESS FEEDBACK (opportunity #1) ---------- */
+/* A subtle, momentary scale on press — the interface confirming it heard the
+   tap. transform-only, 140ms (set on each base rule above), and inherently
+   brief since :active is transient. Deeper on icon-only glyph buttons so the
+   press stays legible on a small target. */
+.dd-btn-gold:not([disabled]):active { transform: scale(0.97); }
+.dd-card__add:active,
+.dd-card__sample:not(.dd-card__sample--full):active,
+.dd-samplebox__btn:not([disabled]):active { transform: scale(0.98); }
+.dd-cart-btn:active,
+.dd-qty__btn:active,
+.dd-drawer__qty-btn:active,
+.dd-drawer__close:active,
+.dd-drawer__box-remove:active { transform: scale(0.9); }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Keep a hint of feedback, gentler — never fully zero. */
+  .dd-btn-gold:not([disabled]):active,
+  .dd-card__add:active,
+  .dd-card__sample:not(.dd-card__sample--full):active,
+  .dd-samplebox__btn:not([disabled]):active,
+  .dd-cart-btn:active,
+  .dd-qty__btn:active,
+  .dd-drawer__qty-btn:active,
+  .dd-drawer__close:active,
+  .dd-drawer__box-remove:active { transform: scale(0.99); }
+}
 
 /* ---------- CALLOUT ---------- */
 .dd-section--callout { padding: 44px 32px 0; }
@@ -180,7 +208,7 @@ body {
 .dd-samplebox__btn {
   background: var(--line); color: rgba(243,236,220,0.35); border: 0; cursor: default;
   height: 48px; padding: 0 26px; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
-  font-weight: 600; font-family: var(--sans); transition: background 0.18s ease, color 0.18s ease;
+  font-weight: 600; font-family: var(--sans); transition: background 0.18s ease, color 0.18s ease, transform 140ms ease-out;
 }
 .dd-samplebox__btn:not([disabled]) { background: var(--gold); color: var(--bg); cursor: pointer; }
 .dd-samplebox__btn:not([disabled]):hover { background: var(--gold-hi); }
@@ -214,20 +242,20 @@ body {
 .dd-card__add {
   background: none; border: 1px solid var(--line); color: var(--cream); cursor: pointer; height: 32px;
   padding: 0 14px; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600;
-  font-family: var(--sans); transition: border-color 0.18s ease, color 0.18s ease;
+  font-family: var(--sans); transition: border-color 0.18s ease, color 0.18s ease, transform 140ms ease-out;
 }
 .dd-card__add:hover { border-color: var(--gold); color: var(--gold); }
 
 /* qty stepper (card) */
 .dd-qty { display: flex; align-items: center; gap: 8px; border: 1px solid rgba(201,169,97,0.4); }
-.dd-qty__btn { width: 26px; height: 26px; background: none; border: 0; color: var(--gold); cursor: pointer; font-size: 14px; font-family: var(--sans); }
+.dd-qty__btn { width: 26px; height: 26px; background: none; border: 0; color: var(--gold); cursor: pointer; font-size: 14px; font-family: var(--sans); transition: transform 140ms ease-out; }
 .dd-qty__val { font-family: var(--mono); font-size: 12px; color: var(--cream); min-width: 14px; text-align: center; }
 
 /* sample toggle */
 .dd-card__sample {
   width: 100%; background: none; border: 1px solid var(--line); color: rgba(243,236,220,0.55); cursor: pointer;
   height: 30px; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600;
-  font-family: var(--sans); transition: border-color 0.18s ease, color 0.18s ease;
+  font-family: var(--sans); transition: border-color 0.18s ease, color 0.18s ease, transform 140ms ease-out;
 }
 .dd-card__sample:hover { border-color: rgba(201,169,97,0.5); }
 .dd-card__sample--in { border-color: var(--gold); color: var(--gold); }
@@ -315,12 +343,12 @@ body {
   display: flex; flex-direction: column;
 }
 .dd-drawer__head { padding: 24px 28px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
-.dd-drawer__close { background: none; border: 0; cursor: pointer; color: rgba(243,236,220,0.6); font-size: 20px; line-height: 1; font-family: var(--sans); }
+.dd-drawer__close { background: none; border: 0; cursor: pointer; color: rgba(243,236,220,0.6); font-size: 20px; line-height: 1; font-family: var(--sans); transition: transform 140ms ease-out; }
 .dd-drawer__body { flex: 1; overflow-y: auto; padding: 22px 28px; }
 .dd-drawer__box { padding: 16px 0; border-bottom: 1px solid var(--line); }
 .dd-drawer__box-head { display: flex; align-items: center; justify-content: space-between; }
 .dd-drawer__box-label { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); }
-.dd-drawer__box-remove { background: none; border: 0; cursor: pointer; color: rgba(243,236,220,0.5); font-size: 16px; line-height: 1; font-family: var(--sans); }
+.dd-drawer__box-remove { background: none; border: 0; cursor: pointer; color: rgba(243,236,220,0.5); font-size: 16px; line-height: 1; font-family: var(--sans); transition: transform 140ms ease-out; }
 .dd-drawer__box-names { margin: 8px 0 0; font-size: 12px; line-height: 1.55; color: rgba(243,236,220,0.6); }
 .dd-drawer__box-price { margin-top: 8px; font-family: var(--mono); font-size: 13px; color: var(--gold); }
 .dd-drawer__item { display: flex; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--line); }
@@ -330,7 +358,7 @@ body {
 .dd-drawer__item-meta { margin-top: 4px; font-family: var(--mono); font-size: 10px; color: rgba(243,236,220,0.45); }
 .dd-drawer__item-row { margin-top: 10px; display: flex; align-items: center; justify-content: space-between; }
 .dd-drawer__qty { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); }
-.dd-drawer__qty-btn { width: 24px; height: 24px; background: none; border: 0; color: var(--gold); cursor: pointer; font-size: 13px; font-family: var(--sans); }
+.dd-drawer__qty-btn { width: 24px; height: 24px; background: none; border: 0; color: var(--gold); cursor: pointer; font-size: 13px; font-family: var(--sans); transition: transform 140ms ease-out; }
 .dd-drawer__qty-val { font-family: var(--mono); font-size: 11px; color: var(--cream); min-width: 12px; text-align: center; }
 .dd-drawer__item-total { font-family: var(--mono); font-size: 13px; color: var(--gold); }
 .dd-drawer__empty { padding: 60px 0; text-align: center; }
