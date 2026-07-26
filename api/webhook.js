@@ -98,6 +98,8 @@ async function fulfilOrder(session) {
     ship_city: m.ship_city || null,
     ship_region: m.ship_region || null,
     ship_postcode: m.ship_postcode || null,
+    delivery_method: m.delivery_method || null,
+    delivery_notes: m.delivery_notes || null,
     status: "paid",
   };
 

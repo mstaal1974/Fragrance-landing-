@@ -29,8 +29,9 @@
           <button type="button" class="dd-nav__link" data-go="dd-unisex">Unisex</button>
           <button type="button" class="dd-nav__link" data-go="dd-request">Request</button>
         </nav>
-        <button type="button" class="dd-cart-btn" data-open-drawer aria-label="Open bag">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5.3" stroke="#c9a961" stroke-width="1.1"/><circle cx="7" cy="7" r="1.4" fill="#c9a961"/></svg>
+        <button type="button" class="dd-cart-btn" data-open-drawer aria-label="Open your bag">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.6 5h8.8l-.7 8.1a1.1 1.1 0 0 1-1.1 1H5.4a1.1 1.1 0 0 1-1.1-1L3.6 5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M5.8 6V4.6a2.2 2.2 0 0 1 4.4 0V6" stroke="currentColor" stroke-width="1.2"/></svg>
+          <span class="dd-cart-btn__label">Your Bag</span>
           <span class="dd-cart-btn__count" data-cart-count>00</span>
         </button>
       </div>
@@ -169,16 +170,33 @@
             </div>
 
             <div class="dd-form__block">
-              <div class="dd-form__label">Shipping Address</div>
+              <div class="dd-form__label">Delivery</div>
+              <div class="dd-delivery">
+                <label class="dd-delivery__opt dd-delivery__opt--on" data-delivery-opt="post">
+                  <input type="radio" name="delivery" value="post" data-delivery="post" checked>
+                  <span><span class="dd-delivery__name">Ship via Australia Post</span><small>Live rate to your address, calculated below.</small></span>
+                </label>
+                <label class="dd-delivery__opt" data-delivery-opt="alternate">
+                  <input type="radio" name="delivery" value="alternate" data-delivery="alternate">
+                  <span><span class="dd-delivery__name">Arrange alternate delivery</span><small>Hand delivery or via a friend — no postage charged.</small></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="dd-form__block">
+              <div class="dd-form__label" data-address-label>Shipping Address</div>
               <div class="dd-form__rows">
                 <input type="text" class="dd-input" data-field="fullName" placeholder="Full name" autocomplete="name">
-                <input type="text" class="dd-input" data-field="address" placeholder="Street address" autocomplete="street-address">
-                <div class="dd-form__triple">
-                  <input type="text" class="dd-input" data-field="city" placeholder="City" autocomplete="address-level2">
-                  <input type="text" class="dd-input" data-field="region" placeholder="State" autocomplete="address-level1">
-                  <input type="text" class="dd-input" data-field="zip" placeholder="ZIP" autocomplete="postal-code">
+                <div class="dd-form__rows" data-postal-fields>
+                  <input type="text" class="dd-input" data-field="address" placeholder="Street address" autocomplete="street-address">
+                  <div class="dd-form__triple">
+                    <input type="text" class="dd-input" data-field="city" placeholder="City" autocomplete="address-level2">
+                    <input type="text" class="dd-input" data-field="region" placeholder="State" autocomplete="address-level1">
+                    <input type="text" class="dd-input" data-field="zip" placeholder="ZIP" autocomplete="postal-code">
+                  </div>
+                  <input type="text" class="dd-input" data-field="country" placeholder="Country" autocomplete="country-name">
                 </div>
-                <input type="text" class="dd-input" data-field="country" placeholder="Country" autocomplete="country-name">
+                <textarea class="dd-input dd-delivery__notes" data-field="deliveryNotes" data-delivery-notes placeholder="How should we get this to you? e.g. hand delivery, a pickup time, or a friend's name, address & contact." hidden></textarea>
               </div>
             </div>
 

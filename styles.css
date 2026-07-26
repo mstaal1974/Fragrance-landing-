@@ -79,12 +79,18 @@ body {
 }
 .dd-nav__link:hover { color: var(--gold); }
 .dd-cart-btn {
-  display: flex; align-items: center; gap: 9px; border: 1px solid var(--line); height: 40px;
-  padding: 0 15px; background: none; color: var(--cream); cursor: pointer; flex-shrink: 0;
-  transition: border-color 0.18s ease, transform 140ms ease-out;
+  display: flex; align-items: center; gap: 10px; border: 1px solid var(--gold); height: 42px;
+  padding: 0 16px; background: rgba(201,169,97,0.10); color: var(--gold); cursor: pointer; flex-shrink: 0;
+  transition: background 0.18s ease, color 0.18s ease, transform 140ms ease-out;
 }
-.dd-cart-btn:hover { border-color: rgba(201,169,97,0.5); }
-.dd-cart-btn__count { font-family: var(--mono); font-size: 12px; color: var(--cream); }
+.dd-cart-btn:hover { background: var(--gold); color: var(--bg); }
+.dd-cart-btn__label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; }
+.dd-cart-btn__count {
+  font-family: var(--mono); font-size: 11px; min-width: 21px; height: 21px; padding: 0 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--gold); color: var(--bg); border-radius: 11px; transition: background 0.18s ease, color 0.18s ease;
+}
+.dd-cart-btn:hover .dd-cart-btn__count { background: var(--bg); color: var(--gold); }
 
 /* ---------- HERO ---------- */
 .dd-hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
@@ -155,11 +161,11 @@ body {
    tap. transform-only, 140ms (set on each base rule above), and inherently
    brief since :active is transient. Deeper on icon-only glyph buttons so the
    press stays legible on a small target. */
-.dd-btn-gold:not([disabled]):active { transform: scale(0.97); }
+.dd-btn-gold:not([disabled]):active,
+.dd-cart-btn:active { transform: scale(0.97); }
 .dd-card__add:active,
 .dd-card__sample:not(.dd-card__sample--full):active,
 .dd-samplebox__btn:not([disabled]):active { transform: scale(0.98); }
-.dd-cart-btn:active,
 .dd-qty__btn:active,
 .dd-drawer__qty-btn:active,
 .dd-drawer__close:active,
@@ -284,6 +290,18 @@ body {
 }
 .dd-form__secure svg { flex: none; margin-top: 1px; }
 .dd-form__secure p { margin: 0; font-size: 12px; line-height: 1.6; color: rgba(243,236,220,0.62); }
+.dd-delivery { margin-top: 14px; display: grid; gap: 10px; }
+.dd-delivery__opt {
+  display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px;
+  border: 1px solid var(--line); background: var(--panel); cursor: pointer; transition: border-color 0.18s ease;
+}
+.dd-delivery__opt:hover { border-color: rgba(201,169,97,0.4); }
+.dd-delivery__opt--on { border-color: var(--gold); }
+.dd-delivery__opt input { margin-top: 3px; accent-color: var(--gold); flex: none; }
+.dd-delivery__opt > span { display: flex; flex-direction: column; gap: 3px; }
+.dd-delivery__name { font-size: 13px; color: var(--cream); }
+.dd-delivery__opt small { font-size: 11.5px; color: rgba(243,236,220,0.5); line-height: 1.4; }
+.dd-delivery__notes { min-height: 92px; resize: vertical; font-family: var(--sans); line-height: 1.5; }
 .dd-summary__secure-note {
   margin: 12px 0 0; text-align: center; font-family: var(--mono);
   font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(243,236,220,0.4);
