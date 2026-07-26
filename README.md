@@ -21,8 +21,12 @@ shipping cost.
 | `api/checkout.js` | Vercel serverless function that creates a Stripe Checkout Session (prices recomputed server‑side) and returns the hosted payment URL. |
 | `api/order.js` | Vercel serverless function that verifies a Stripe session on return, so the confirmation screen only shows after a real payment. |
 | `api/webhook.js` | Vercel serverless function that receives Stripe webhooks (signature‑verified) and fulfils paid orders — the reliable source of truth even if the buyer never returns. |
-| `api/_supabase.js` | Shared helper that upserts orders into Supabase via its REST API (service‑role key, server‑side only). |
-| `supabase/schema.sql` | One‑time SQL to create the `orders` table (run in the Supabase SQL editor). |
+| `api/_supabase.js` | Shared helper that reads/writes Supabase via its REST API (service‑role key, server‑side only). |
+| `api/request.js` | Vercel serverless function that stores a fragrance request in Supabase. |
+| `api/requests.js` | Vercel serverless function — token‑gated admin list of requests, read by `admin.html`. |
+| `catalogue.json` | The searchable wholesale library (3,060 fragrances) powering the Request section. |
+| `admin.html` | Standalone admin view of fragrance requests (gated by `ADMIN_TOKEN`). |
+| `supabase/schema.sql` | One‑time SQL to create the `orders` and `fragrance_requests` tables. |
 | `api/shipping.js` | Vercel serverless proxy to the Australia Post PAC domestic‑parcel API. |
 | `api/_auspost.js` | Shared Australia Post quote helper used by `shipping.js` and `checkout.js`. |
 | `assets/` | Hero bottle image and the per‑scent product photography wired onto the cards. |
@@ -132,6 +136,33 @@ The `orders` columns mirror the session metadata (`email`, `name`,
 `amount_total` in cents, `currency`, `items`, `ship_*`, `status`,
 `stripe_session_id`, `payment_intent_id`, `created_at`). To email a receipt as
 well, add a mailer call inside `fulfilOrder` after the Supabase write.
+
+## Request a Fragrance (full library)
+
+Below the three collections, the **Request a Fragrance** section lets visitors
+search the full sourcing library — 3,060 fragrances in `catalogue.json` — by
+name or brand. `catalogue.json` is fetched lazily (on first focus of the search
+box) and filtered client‑side, so it never slows the initial page load.
+
+Picking a result opens a request modal (name, email, quantity, note). Submitting
+POSTs to `api/request.js`, which validates and stores the enquiry in Supabase's
+`fragrance_requests` table — each row **correlated to the specific fragrance**
+(name, brand, size, price, product id) so you know exactly what was asked for.
+Requests need Supabase configured (see below); without it the endpoint returns a
+clear "not enabled yet" message rather than dropping the enquiry silently.
+
+### Admin view
+
+`/admin.html` is a standalone page to review requests. Enter the admin token and
+it calls `api/requests.js` (which checks the token against `ADMIN_TOKEN` in a
+constant‑time compare) and renders the requests newest‑first, with a CSV export
+and `mailto:` links. Set a long random `ADMIN_TOKEN` in Vercel.
+
+This is a lightweight shared‑secret gate suitable for a private preview — the
+secure source of truth is always the **Supabase dashboard** (Table editor →
+`fragrance_requests`), which you can use instead of, or alongside, `admin.html`.
+To regenerate `catalogue.json` from an updated spreadsheet, re‑export the same
+`{id,n,b,s,p}` shape (name `n`, brand `b`, size `s`, price `p`).
 
 ## Shipping (Australia Post PAC)
 

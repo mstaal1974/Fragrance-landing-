@@ -26,3 +26,27 @@ create table if not exists public.orders (
 -- policies means the public/anon key can neither read nor write — orders stay
 -- private and can only be reached with the secret service_role key.
 alter table public.orders enable row level security;
+
+
+-- Fragrance requests — enquiries from the "Request a Fragrance" section, each
+-- correlated to a specific fragrance in the wholesale library (catalogue.json).
+-- Written by api/request.js and read by api/requests.js (admin), both with the
+-- service_role key.
+create table if not exists public.fragrance_requests (
+  id              uuid primary key default gen_random_uuid(),
+  requester_name  text not null,
+  email           text not null,
+  note            text,
+  quantity        integer not null default 1,
+  fragrance_name  text not null,       -- correlates the request to the library item
+  brand           text,
+  size            text,
+  price           numeric,
+  product_id      text,
+  status          text not null default 'new',
+  created_at      timestamptz not null default now()
+);
+
+-- Same lock-down as orders: RLS on, no policies → only the service_role key
+-- (server-side) can read or write. Enquiries stay private.
+alter table public.fragrance_requests enable row level security;
