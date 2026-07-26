@@ -33,6 +33,7 @@
     view: "shop",        // shop | checkout | confirmed
     orderNumber: null,
     drawerOpen: false,
+    productId: null,     // fragrance id shown in the detail modal, or null
     showFormError: false,
     checkoutForm: {
       email: "", fullName: "", address: "", city: "", region: "",
@@ -123,6 +124,7 @@
     renderCards();
     updateHeader();
     if (state.drawerOpen) renderDrawer();
+    refreshProduct();
   }
 
   /* ---------- sample box ---------- */
@@ -131,6 +133,7 @@
     if (i >= 0) state.sampleSelection.splice(i, 1);
     else if (state.sampleSelection.length < 5) state.sampleSelection.push(id);
     renderCards();
+    refreshProduct();
   }
   function addSampleBox() {
     if (state.sampleSelection.length !== 5) return;
@@ -138,6 +141,8 @@
     state.sampleSelection = [];
     renderCards();
     updateHeader();
+    refreshProduct();
+    closeProduct();
     openDrawer();
   }
   function removeSampleBox(boxId) {
@@ -159,6 +164,76 @@
 
   function openDrawer() { state.drawerOpen = true; $("[data-drawer]").hidden = false; renderDrawer(); }
   function closeDrawer() { state.drawerOpen = false; $("[data-drawer]").hidden = true; }
+
+  /* ---------- product detail modal ---------- */
+  function familyLabel(fam) { return fam === "him" ? "For Him" : fam === "her" ? "For Her" : "Unisex"; }
+
+  function openProduct(id) {
+    if (!fragById(id)) return;
+    state.productId = id;
+    $("[data-product-modal]").hidden = false;
+    document.body.style.overflow = "hidden"; // lock background scroll
+    renderProduct();
+    var close = $("[data-product-modal] [data-close-product]");
+    if (close) close.focus();
+  }
+  function closeProduct() {
+    state.productId = null;
+    $("[data-product-modal]").hidden = true;
+    document.body.style.overflow = "";
+  }
+  function refreshProduct() { if (state.productId) renderProduct(); }
+
+  function renderProduct() {
+    var f = fragById(state.productId);
+    if (!f) return;
+    var qty = qtyFor(f.id);
+    var inSample = state.sampleSelection.indexOf(f.id) >= 0;
+    var sampleFull = state.sampleSelection.length >= 5 && !inSample;
+
+    var media =
+      '<div class="dd-modal__media">' +
+        '<div class="dd-modal__swatch" style="background:' + swatchGradient(f.liquid) + '"></div>' +
+        (f.img ? '<img class="dd-modal__img" src="' + esc(f.img) + '" alt="' + esc(f.name) + '">' : '') +
+      '</div>';
+
+    var action = qty > 0
+      ? '<div class="dd-qty dd-qty--lg">' +
+          '<button type="button" class="dd-qty__btn" data-dec="' + f.id + '" aria-label="Decrease">−</button>' +
+          '<span class="dd-qty__val">' + qty + '</span>' +
+          '<button type="button" class="dd-qty__btn" data-inc="' + f.id + '" aria-label="Increase">+</button>' +
+        '</div>'
+      : '<button type="button" class="dd-btn-gold dd-modal__buy" data-inc="' + f.id + '">Add to Bag · $12</button>';
+
+    var sampleCls = "dd-modal__sample" + (inSample ? " dd-modal__sample--in" : (sampleFull ? " dd-modal__sample--full" : ""));
+    var sampleLabel = inSample ? "✓ In Sample Box" : (sampleFull ? "Sample Box Full" : "+ Add to Sample Box");
+    var sampleBtn = '<button type="button" class="' + sampleCls + '" data-sample="' + f.id + '"' +
+      (sampleFull ? " disabled" : "") + ">" + sampleLabel + "</button>";
+
+    function note(label, val) {
+      return '<div class="dd-modal__note">' +
+        '<div class="dd-modal__note-label">' + label + '</div>' +
+        '<div class="dd-modal__note-val">' + esc(val) + '</div>' +
+      '</div>';
+    }
+
+    $("[data-product-body]").innerHTML =
+      media +
+      '<div class="dd-modal__content">' +
+        '<div class="dd-modal__insp">' + esc(f.insp) + '</div>' +
+        '<h2 class="dd-modal__name">' + esc(f.name) + '</h2>' +
+        '<span class="dd-modal__family">' + familyLabel(f.family) + '</span>' +
+        '<p class="dd-modal__desc">' + esc(f.desc) + '</p>' +
+        '<div class="dd-modal__notes">' +
+          note("Top", f.top) + note("Heart", f.heart) + note("Base", f.base) +
+        '</div>' +
+        '<div class="dd-modal__foot">' +
+          '<span class="dd-modal__price">$12 <small>/ 10ml</small></span>' +
+          action +
+        '</div>' +
+        sampleBtn +
+      '</div>';
+  }
 
   /* ---------- card rendering ---------- */
   function cardHTML(f) {
@@ -185,7 +260,7 @@
     var sampleBtn = '<button type="button" class="' + sampleCls + '" data-sample="' + f.id + '"' +
       (sampleFull ? " disabled" : "") + ">" + sampleLabel + "</button>";
 
-    return '<div class="dd-card">' + media +
+    return '<div class="dd-card" data-open-product="' + f.id + '">' + media +
       '<div class="dd-card__body">' +
         '<div class="dd-card__insp">' + esc(f.insp) + '</div>' +
         '<div class="dd-card__name">' + esc(f.name) + '</div>' +
@@ -515,21 +590,26 @@
     document.addEventListener("click", function (e) {
       var t = e.target.closest("[data-inc],[data-dec],[data-sample],[data-go],[data-remove-box]," +
         "[data-open-drawer],[data-close-drawer],[data-add-samplebox],[data-go-checkout]," +
-        "[data-back-to-shop],[data-place-order],[data-continue-shopping]");
-      if (!t) return;
-
-      if (t.hasAttribute("data-inc")) return inc(t.getAttribute("data-inc"));
-      if (t.hasAttribute("data-dec")) return dec(t.getAttribute("data-dec"));
-      if (t.hasAttribute("data-sample")) return toggleSample(t.getAttribute("data-sample"));
-      if (t.hasAttribute("data-remove-box")) return removeSampleBox(t.getAttribute("data-remove-box"));
-      if (t.hasAttribute("data-go")) return goToSection(t.getAttribute("data-go"));
-      if (t.hasAttribute("data-open-drawer")) return openDrawer();
-      if (t.hasAttribute("data-close-drawer")) return closeDrawer();
-      if (t.hasAttribute("data-add-samplebox")) return addSampleBox();
-      if (t.hasAttribute("data-go-checkout")) return goCheckout();
-      if (t.hasAttribute("data-back-to-shop")) return setView("shop");
-      if (t.hasAttribute("data-place-order")) return placeOrder();
-      if (t.hasAttribute("data-continue-shopping")) return continueShopping();
+        "[data-back-to-shop],[data-place-order],[data-continue-shopping],[data-close-product]");
+      if (t) {
+        if (t.hasAttribute("data-inc")) return inc(t.getAttribute("data-inc"));
+        if (t.hasAttribute("data-dec")) return dec(t.getAttribute("data-dec"));
+        if (t.hasAttribute("data-sample")) return toggleSample(t.getAttribute("data-sample"));
+        if (t.hasAttribute("data-remove-box")) return removeSampleBox(t.getAttribute("data-remove-box"));
+        if (t.hasAttribute("data-go")) return goToSection(t.getAttribute("data-go"));
+        if (t.hasAttribute("data-open-drawer")) return openDrawer();
+        if (t.hasAttribute("data-close-drawer")) return closeDrawer();
+        if (t.hasAttribute("data-add-samplebox")) return addSampleBox();
+        if (t.hasAttribute("data-go-checkout")) return goCheckout();
+        if (t.hasAttribute("data-back-to-shop")) return setView("shop");
+        if (t.hasAttribute("data-place-order")) return placeOrder();
+        if (t.hasAttribute("data-continue-shopping")) return continueShopping();
+        if (t.hasAttribute("data-close-product")) return closeProduct();
+        return;
+      }
+      // Non-control click on a card opens its detail modal.
+      var card = e.target.closest("[data-open-product]");
+      if (card) return openProduct(card.getAttribute("data-open-product"));
     });
 
     // checkout form inputs
@@ -545,9 +625,11 @@
       });
     });
 
-    // Esc closes the drawer
+    // Esc closes the product modal first, then the drawer
     document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape" && state.drawerOpen) closeDrawer();
+      if (e.key !== "Escape") return;
+      if (state.productId) return closeProduct();
+      if (state.drawerOpen) return closeDrawer();
     });
   }
 

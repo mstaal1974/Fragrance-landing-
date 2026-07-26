@@ -227,7 +227,7 @@ body {
 .dd-grid { margin-top: 30px; display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; }
 
 /* ---------- FRAGRANCE CARD ---------- */
-.dd-card { background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; }
+.dd-card { background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; cursor: pointer; }
 .dd-card__media { position: relative; height: 110px; overflow: hidden; }
 .dd-card__swatch { position: absolute; inset: 0; }
 .dd-card__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
@@ -368,6 +368,69 @@ body {
 .dd-drawer__subtotal { display: flex; align-items: center; justify-content: space-between; font-family: var(--mono); font-size: 11px; color: rgba(243,236,220,0.6); }
 .dd-drawer__subtotal-val { color: var(--gold); font-size: 16px; }
 .dd-drawer__foot-note { margin: 12px 0 0; font-size: 10.5px; line-height: 1.5; color: rgba(243,236,220,0.45); }
+
+/* ---------- PRODUCT DETAIL MODAL ---------- */
+[data-product-modal] { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.dd-modal__scrim { position: fixed; inset: 0; background: rgba(5,5,7,0.72); backdrop-filter: blur(4px); animation: ddFade 0.25s ease; }
+.dd-modal {
+  position: relative; z-index: 1; width: 100%; max-width: 760px; max-height: 90vh; overflow-y: auto;
+  background: var(--panel-dark); border: 1px solid var(--line);
+  animation: ddModalIn 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes ddModalIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+.dd-modal__close {
+  position: absolute; top: 12px; right: 14px; z-index: 3; background: none; border: 0; cursor: pointer;
+  color: rgba(243,236,220,0.6); font-size: 24px; line-height: 1; font-family: var(--sans);
+  transition: color 0.18s ease, transform 140ms ease-out;
+}
+.dd-modal__close:hover { color: var(--gold); }
+.dd-modal__close:active { transform: scale(0.9); }
+.dd-modal__body { display: grid; grid-template-columns: 0.9fr 1.1fr; }
+
+.dd-modal__media { position: relative; min-height: 340px; background: var(--panel); overflow: hidden; }
+.dd-modal__swatch { position: absolute; inset: 0; }
+.dd-modal__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 26px; }
+
+.dd-modal__content { padding: 44px 38px 36px; }
+.dd-modal__insp { font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); }
+.dd-modal__name { margin: 10px 0 0; font-family: var(--serif); font-weight: 300; font-size: 36px; line-height: 1.04; color: var(--cream); }
+.dd-modal__family {
+  display: inline-block; margin-top: 12px; padding: 4px 11px; border: 1px solid var(--line);
+  font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(243,236,220,0.55);
+}
+.dd-modal__desc { margin: 20px 0 0; font-size: 14px; line-height: 1.7; color: rgba(243,236,220,0.72); }
+.dd-modal__notes { margin-top: 24px; border-top: 1px solid var(--line); }
+.dd-modal__note { display: grid; grid-template-columns: 84px 1fr; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+.dd-modal__note-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); padding-top: 2px; }
+.dd-modal__note-val { font-size: 13px; line-height: 1.5; color: var(--cream); }
+.dd-modal__foot { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 28px; }
+.dd-modal__price { font-family: var(--serif); font-size: 24px; color: var(--cream); }
+.dd-modal__price small { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; color: rgba(243,236,220,0.45); }
+.dd-modal__buy { height: 48px; padding: 0 26px; }
+.dd-qty--lg { height: 48px; }
+.dd-qty--lg .dd-qty__btn { width: 40px; height: 46px; font-size: 16px; }
+.dd-qty--lg .dd-qty__val { font-size: 14px; }
+.dd-modal__sample {
+  width: 100%; margin-top: 14px; background: none; border: 1px solid var(--line); color: rgba(243,236,220,0.55); cursor: pointer;
+  height: 44px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600;
+  font-family: var(--sans); transition: border-color 0.18s ease, color 0.18s ease, transform 140ms ease-out;
+}
+.dd-modal__sample:hover { border-color: rgba(201,169,97,0.5); }
+.dd-modal__sample--in { border-color: var(--gold); color: var(--gold); }
+.dd-modal__sample--full { color: rgba(243,236,220,0.3); cursor: default; }
+.dd-modal__sample:not(.dd-modal__sample--full):active { transform: scale(0.98); }
+
+@media (max-width: 640px) {
+  [data-product-modal] { padding: 0; align-items: stretch; }
+  .dd-modal { max-width: none; max-height: 100vh; border: 0; }
+  .dd-modal__body { grid-template-columns: 1fr; }
+  .dd-modal__media { min-height: 240px; }
+  .dd-modal__content { padding: 30px 22px 28px; }
+  .dd-modal__name { font-size: 30px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dd-modal { animation: ddFade 0.2s ease; }
+}
 
 /* ---------- RESPONSIVE ---------- */
 @media (max-width: 1040px) {
