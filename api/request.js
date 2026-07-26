@@ -22,6 +22,24 @@ function bad(res, status, error) { res.status(status).json({ ok: false, error: e
 function str(v, max) { return String(v == null ? "" : v).trim().slice(0, max); }
 
 module.exports = async function handler(req, res) {
+  // Safe diagnostics — never returns the key itself. Visit /api/request?debug=1
+  // to confirm whether this deployment can see the Supabase env vars.
+  if (req.method === "GET" && req.query && req.query.debug === "1") {
+    var u = String(process.env.SUPABASE_URL || "").trim();
+    var k = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+    return res.status(200).json({
+      ok: true,
+      diagnostic: true,
+      supabaseConfigured: !!(u && k),
+      hasSupabaseUrl: !!u,
+      hasServiceRoleKey: !!k,
+      urlHost: u ? u.replace(/^https?:\/\//, "").split("/")[0] : null, // e.g. abcd.supabase.co — not secret
+      serviceKeyLength: k.length,                                       // length only, never the value
+      env: process.env.VERCEL_ENV || "unknown",
+      commit: String(process.env.VERCEL_GIT_COMMIT_SHA || "unknown").slice(0, 7),
+    });
+  }
+
   if (req.method !== "POST") { res.setHeader("Allow", "POST"); return bad(res, 405, "POST only."); }
 
   var body = req.body;
