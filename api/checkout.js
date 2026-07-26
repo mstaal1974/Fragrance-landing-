@@ -21,10 +21,20 @@
 
 var auspost = require("./_auspost");
 
-var PRICE = 1200;       // one 10ml discovery bottle, in cents
-var BOX_PRICE = 5000;   // one 5-scent sample box, in cents
+var PRICE = 1200;       // one 10ml discovery bottle, in cents (inline fallback)
+var BOX_PRICE = 5000;   // one 5-scent sample box, in cents (inline fallback)
 var CURRENCY = (process.env.STRIPE_CURRENCY || "aud").toLowerCase();
 var MAX_QTY = 99;       // sanity cap per line
+
+// Optional Stripe Catalog Prices. When set, checkout references these reusable
+// Price IDs (one for all bottles, one for the box) instead of ad-hoc price_data,
+// so the Stripe dashboard reports clean "bottles vs boxes" totals. All bottles
+// share one Price, so they collapse to a single line item with the summed
+// quantity (Stripe forbids duplicate price IDs); the per-scent breakdown is
+// preserved in the session metadata. Leave unset to keep inline pricing.
+var PRICE_BOTTLE = String(process.env.STRIPE_PRICE_BOTTLE || "").trim();
+var PRICE_BOX = String(process.env.STRIPE_PRICE_BOX || "").trim();
+var MAX_TOTAL_QTY = 999; // cap for the combined bottle line item
 
 function bad(res, status, error) {
   res.status(status).json({ ok: false, error: error });
@@ -68,33 +78,49 @@ module.exports = async function handler(req, res) {
   if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = {}; } }
   body = body || {};
 
-  // ---- recompute line items from quantities (never trust client prices) ----
+  // ---- build line items; always derive the scent summary for metadata ----
+  // Prices come from Stripe (fixed Price IDs) or fixed constants — never from
+  // the client. The summary is built the same way regardless of pricing model.
   var line_items = [];
   var summary = []; // human-readable order line for webhook fulfilment metadata
+  var totalBottles = 0;
+
   (Array.isArray(body.bottles) ? body.bottles : []).forEach(function (b) {
     var qty = Math.min(MAX_QTY, Math.max(0, parseInt(b && b.qty, 10) || 0));
     if (!qty) return;
     var name = String((b && b.name) || "Discovery Bottle").slice(0, 120);
-    line_items.push({
-      quantity: qty,
-      price_data: {
-        currency: CURRENCY,
-        unit_amount: PRICE,
-        product_data: { name: name + " — 10ml" },
-      },
-    });
+    totalBottles += qty;
     summary.push(qty + "× " + name);
+    if (!PRICE_BOTTLE) {
+      // Inline fallback: one line item per scent, ad-hoc price.
+      line_items.push({
+        quantity: qty,
+        price_data: { currency: CURRENCY, unit_amount: PRICE, product_data: { name: name + " — 10ml" } },
+      });
+    }
   });
+  if (PRICE_BOTTLE && totalBottles > 0) {
+    // Catalog mode: all bottles share one Price → a single combined line item.
+    line_items.push({ price: PRICE_BOTTLE, quantity: Math.min(totalBottles, MAX_TOTAL_QTY) });
+  }
+
+  var totalBoxes = 0;
   (Array.isArray(body.boxes) ? body.boxes : []).forEach(function (bx) {
     var names = String((bx && bx.names) || "").slice(0, 250);
-    var product = { name: "Sample Box · 5 × 10ml" };
-    if (names) product.description = names;
-    line_items.push({
-      quantity: 1,
-      price_data: { currency: CURRENCY, unit_amount: BOX_PRICE, product_data: product },
-    });
+    totalBoxes += 1;
     summary.push("Sample Box" + (names ? " (" + names + ")" : ""));
+    if (!PRICE_BOX) {
+      var product = { name: "Sample Box · 5 × 10ml" };
+      if (names) product.description = names;
+      line_items.push({
+        quantity: 1,
+        price_data: { currency: CURRENCY, unit_amount: BOX_PRICE, product_data: product },
+      });
+    }
   });
+  if (PRICE_BOX && totalBoxes > 0) {
+    line_items.push({ price: PRICE_BOX, quantity: Math.min(totalBoxes, MAX_TOTAL_QTY) });
+  }
 
   if (!line_items.length) return bad(res, 400, "Your bag is empty.");
 

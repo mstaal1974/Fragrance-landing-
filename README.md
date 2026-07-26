@@ -26,6 +26,8 @@ shipping cost.
 | `api/requests.js` | Vercel serverless function — token‑gated admin list of requests, read by `admin.html`. |
 | `catalogue.json` | The searchable wholesale library (3,060 fragrances) powering the Request section. |
 | `admin.html` | Standalone admin view of fragrance requests (gated by `ADMIN_TOKEN`). |
+| `privacy.html` | Privacy Policy (Australian Privacy Principles), linked in the footer. |
+| `refunds.html` | Refunds &amp; Returns Policy (Australian Consumer Law), linked in the footer. |
 | `supabase/schema.sql` | One‑time SQL to create the `orders` and `fragrance_requests` tables. |
 | `api/shipping.js` | Vercel serverless proxy to the Australia Post PAC domestic‑parcel API. |
 | `api/_auspost.js` | Shared Australia Post quote helper used by `shipping.js` and `checkout.js`. |
@@ -69,6 +71,19 @@ To point the front‑end at different endpoints, set
 `window.MO_CONFIG = { checkoutEndpoint: "…", orderEndpoint: "…" }` before
 `app.js` loads. If `STRIPE_SECRET_KEY` is missing, Place Order surfaces a clear
 error instead of proceeding.
+
+**Clean product reporting (optional Catalog Prices):** by default checkout
+builds each line item with ad‑hoc `price_data`, so no Stripe products need
+maintaining. If you'd rather see clean "bottles vs boxes" totals in the Stripe
+dashboard, create two **one‑time** Prices — a *10ml Discovery Bottle* at $12 and
+a *Sample Box (5 × 10ml)* at $50 — and set their IDs as `STRIPE_PRICE_BOTTLE`
+and `STRIPE_PRICE_BOX`. Checkout then references those Prices instead. All
+bottles share one Price, so they collapse into a single line item with the
+summed quantity (Stripe forbids duplicate price IDs on one session); the
+per‑scent breakdown is still recorded in the session metadata (and in Supabase).
+Leave the two vars blank to keep inline pricing. This is the recommended middle
+ground — two Prices, not a 32‑product catalog. Make sure the Prices are one‑time
+(not recurring) and in the same currency as `STRIPE_CURRENCY`.
 
 **Switching to on‑page card fields:** this uses hosted redirect (simplest, most
 secure). To keep buyers on the page instead, swap to Stripe's embedded
