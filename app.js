@@ -135,17 +135,41 @@
   }
 
   /* ---------- sample box ---------- */
+  var nudgeTimer = null;
+  // Upsell nudge when the buyer is one or two scents away from a Sample Box.
+  // The "$2" claim is only shown at 4 selected, where it's accurate: four 10ml
+  // bottles are $48, a 5-scent box is $50 — so the 5th scent costs just $2.
+  function showSampleNudge(n) {
+    var el = $("[data-samplebox-nudge]");
+    if (!el) return;
+    if (n !== 3 && n !== 4) { el.hidden = true; if (nudgeTimer) clearTimeout(nudgeTimer); return; }
+    var msg = n === 4
+      ? "One more scent completes your <strong>Sample Box</strong> — your last fragrance for just <strong>$2</strong>. Five for $50."
+      : "Two more makes a <strong>Sample Box</strong> — five scents for <strong>$50</strong> flat, $10 off buying them separately.";
+    $("[data-nudge-text]").innerHTML = msg;
+    el.hidden = false;
+    if (nudgeTimer) clearTimeout(nudgeTimer);
+    nudgeTimer = setTimeout(function () { el.hidden = true; }, 7000);
+  }
+  function hideSampleNudge() {
+    var el = $("[data-samplebox-nudge]");
+    if (el) el.hidden = true;
+    if (nudgeTimer) clearTimeout(nudgeTimer);
+  }
+
   function toggleSample(id) {
     var i = state.sampleSelection.indexOf(id);
     if (i >= 0) state.sampleSelection.splice(i, 1);
     else if (state.sampleSelection.length < 5) state.sampleSelection.push(id);
     renderCards();
     refreshProduct();
+    showSampleNudge(state.sampleSelection.length);
   }
   function addSampleBox() {
     if (state.sampleSelection.length !== 5) return;
     state.sampleBoxes.push({ id: "box-" + Date.now(), items: state.sampleSelection.slice() });
     state.sampleSelection = [];
+    hideSampleNudge();
     renderCards();
     updateHeader();
     refreshProduct();
@@ -487,6 +511,7 @@
     $("[data-sample-count]").textContent = n + " / 5 selected";
     var addBtn = $("[data-add-samplebox]");
     addBtn.disabled = n !== 5;
+    addBtn.textContent = (n > 0 && n < 5) ? ("Pick " + (5 - n) + " More · $50") : "Add Sample Box · $50";
   }
 
   function updateHeader() {
@@ -833,7 +858,8 @@
       var t = e.target.closest("[data-inc],[data-dec],[data-sample],[data-go],[data-remove-box]," +
         "[data-open-drawer],[data-close-drawer],[data-add-samplebox],[data-go-checkout]," +
         "[data-back-to-shop],[data-place-order],[data-continue-shopping],[data-close-product]," +
-        "[data-request-frag],[data-close-request],[data-submit-request],[data-close-search],[data-open-search]");
+        "[data-request-frag],[data-close-request],[data-submit-request],[data-close-search],[data-open-search]," +
+        "[data-nudge-close]");
       if (t) {
         if (t.hasAttribute("data-inc")) return inc(t.getAttribute("data-inc"));
         if (t.hasAttribute("data-dec")) return dec(t.getAttribute("data-dec"));
@@ -853,6 +879,7 @@
         if (t.hasAttribute("data-submit-request")) return submitRequest();
         if (t.hasAttribute("data-open-search")) return openSearch();
         if (t.hasAttribute("data-close-search")) return closeSearch();
+        if (t.hasAttribute("data-nudge-close")) return hideSampleNudge();
         return;
       }
       // Non-control click on a card opens its detail modal.
