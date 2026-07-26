@@ -121,7 +121,26 @@
   }
 
   /* ---------- cart mutations ---------- */
-  function inc(id) { state.cart[id] = (state.cart[id] || 0) + 1; onCartChange(); }
+  function inc(id) {
+    state.cart[id] = (state.cart[id] || 0) + 1;
+    var boxed = maybeAutoBox();
+    onCartChange();
+    if (boxed) { closeProduct(); showBoxCreatedNudge(); openDrawer(); }
+  }
+  // When 5 different scents sit in the bag as loose bottles, bundle one of each
+  // into a Sample Box ($50) — cheaper than five bottles ($60). Extra quantities
+  // stay as loose bottles. Returns true if a box was created.
+  function maybeAutoBox() {
+    var ids = cartIds();
+    if (ids.length < 5) return false;
+    var boxItems = ids.slice(0, 5);
+    boxItems.forEach(function (id) {
+      var n = (state.cart[id] || 0) - 1;
+      if (n <= 0) delete state.cart[id]; else state.cart[id] = n;
+    });
+    state.sampleBoxes.push({ id: "box-" + Date.now(), items: boxItems.slice() });
+    return true;
+  }
   function dec(id) {
     var n = (state.cart[id] || 0) - 1;
     if (n <= 0) delete state.cart[id]; else state.cart[id] = n;
@@ -156,11 +175,22 @@
     if (el) el.hidden = true;
     if (nudgeTimer) clearTimeout(nudgeTimer);
   }
+  // Confirmation shown when 5 loose bottles auto-bundle into a Sample Box.
+  function showBoxCreatedNudge() {
+    var el = $("[data-samplebox-nudge]");
+    if (!el) return;
+    $("[data-nudge-text]").innerHTML = "Five scents — we've bundled them into a <strong>Sample Box</strong> for <strong>$50</strong>, saving you $10.";
+    el.hidden = false;
+    if (nudgeTimer) clearTimeout(nudgeTimer);
+    nudgeTimer = setTimeout(function () { el.hidden = true; }, 7000);
+  }
 
   function toggleSample(id) {
     var i = state.sampleSelection.indexOf(id);
     if (i >= 0) state.sampleSelection.splice(i, 1);
     else if (state.sampleSelection.length < 5) state.sampleSelection.push(id);
+    // The 5th pick completes the box — create it automatically, no extra click.
+    if (state.sampleSelection.length === 5) { addSampleBox(); return; }
     renderCards();
     refreshProduct();
     showSampleNudge(state.sampleSelection.length);
