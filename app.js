@@ -18,6 +18,9 @@
   // orderEndpoint verifies payment when Stripe redirects the buyer back.
   var CHECKOUT_ENDPOINT = CFG.checkoutEndpoint || "/api/checkout";
   var ORDER_ENDPOINT = CFG.orderEndpoint || "/api/order";
+  // "Request a Fragrance" — searchable wholesale library + request submission.
+  var REQUEST_ENDPOINT = CFG.requestEndpoint || "/api/request";
+  var CATALOGUE_URL = CFG.catalogueUrl || "catalogue.json";
   // Physical item specs (mm, grams). The parcel size/weight sent to Australia
   // Post is computed from the actual contents (see parcelSpec()).
   var ITEM = {
@@ -233,6 +236,151 @@
         '</div>' +
         sampleBtn +
       '</div>';
+  }
+
+  /* ---------- request a fragrance (wholesale library) ---------- */
+  var CHECK_SVG = '<svg width="26" height="26" viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="10" r="9" stroke="#c9a961" stroke-width="1.1"/><path d="M6 10l2.6 2.6L14 7" stroke="#c9a961" stroke-width="1.4"/></svg>';
+  var catalogue = null;         // lazily loaded from catalogue.json
+  var catalogueLoading = false;
+  var reqSearchTimer = null;
+  var requestFrag = null;       // item selected for the request modal
+
+  function loadCatalogue() {
+    if (catalogue || catalogueLoading) return;
+    catalogueLoading = true;
+    var meta = $("[data-request-meta]");
+    if (meta) meta.textContent = "Loading library…";
+    fetch(CATALOGUE_URL, { headers: { Accept: "application/json" } })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        catalogue = Array.isArray(data) ? data : [];
+        catalogueLoading = false;
+        renderRequestResults($("[data-request-search]").value);
+      })
+      .catch(function () {
+        catalogueLoading = false;
+        if (meta) meta.textContent = "Couldn't load the library — please refresh.";
+      });
+  }
+
+  function searchCatalogue(q) {
+    q = String(q || "").trim().toLowerCase();
+    if (!q || !catalogue) return { total: 0, items: [] };
+    var terms = q.split(/\s+/);
+    var matches = catalogue.filter(function (it) {
+      var hay = (it.n + " " + it.b).toLowerCase();
+      return terms.every(function (t) { return hay.indexOf(t) !== -1; });
+    });
+    return { total: matches.length, items: matches.slice(0, 40) };
+  }
+
+  function renderRequestResults(q) {
+    var wrap = $("[data-request-results]");
+    var meta = $("[data-request-meta]");
+    if (!wrap) return;
+    q = String(q || "").trim();
+    if (!q) {
+      wrap.innerHTML = "";
+      if (meta) meta.textContent = catalogue ? (catalogue.length.toLocaleString() + " fragrances in the library") : "";
+      return;
+    }
+    if (!catalogue) return; // still loading; loadCatalogue re-renders on arrival
+    var res = searchCatalogue(q);
+    if (meta) meta.textContent = res.total
+      ? ("Showing " + res.items.length + " of " + res.total.toLocaleString() + " match" + (res.total === 1 ? "" : "es"))
+      : "No matches — try another spelling.";
+    wrap.innerHTML = res.items.map(function (it) {
+      var price = it.p != null ? ("$" + it.p) : "";
+      return '<div class="dd-req-row">' +
+        '<div class="dd-req-row__main">' +
+          '<div class="dd-req-row__name">' + esc(it.n) + '</div>' +
+          '<div class="dd-req-row__brand">' + esc(it.b) + (it.s ? " · " + esc(it.s) : "") + '</div>' +
+        '</div>' +
+        '<div class="dd-req-row__price">' + price + '</div>' +
+        '<button type="button" class="dd-req-row__btn" data-request-frag="' + esc(it.id) + '">Request</button>' +
+      '</div>';
+    }).join("");
+  }
+
+  function openRequest(id) {
+    var it = catalogue && catalogue.filter(function (x) { return x.id === id; })[0];
+    if (!it) return;
+    requestFrag = it;
+    $("[data-request-modal]").hidden = false;
+    document.body.style.overflow = "hidden";
+    renderRequestForm();
+    var el = $('[data-req-field="name"]');
+    if (el) el.focus();
+  }
+  function closeRequest() {
+    requestFrag = null;
+    $("[data-request-modal]").hidden = true;
+    document.body.style.overflow = "";
+  }
+  function renderRequestForm() {
+    var it = requestFrag;
+    if (!it) return;
+    var price = it.p != null ? (" · $" + it.p) : "";
+    $("[data-request-form]").innerHTML =
+      '<div class="dd-eyebrow">Request Fragrance</div>' +
+      '<h3 class="dd-request-form__name">' + esc(it.n) + '</h3>' +
+      '<div class="dd-request-form__brand">' + esc(it.b) + (it.s ? " · " + esc(it.s) : "") + price + '</div>' +
+      '<div class="dd-request-form__fields">' +
+        '<input type="text" class="dd-input" data-req-field="name" placeholder="Your name" autocomplete="name">' +
+        '<input type="email" class="dd-input" data-req-field="email" placeholder="Email address" autocomplete="email">' +
+        '<input type="number" min="1" class="dd-input" data-req-field="quantity" placeholder="Quantity" value="1">' +
+        '<textarea class="dd-input dd-request-form__note" data-req-field="note" placeholder="Anything we should know? (optional)"></textarea>' +
+      '</div>' +
+      '<button type="button" class="dd-btn-gold dd-btn-gold--block" data-submit-request>Send Request</button>' +
+      '<p class="dd-request-form__msg" data-request-msg></p>';
+  }
+  function requestError(text) {
+    var msg = $("[data-request-msg]");
+    if (msg) { msg.textContent = text; msg.className = "dd-request-form__msg dd-request-form__msg--err"; }
+  }
+  function submitRequest() {
+    var it = requestFrag;
+    if (!it) return;
+    var val = function (f) { var el = $('[data-req-field="' + f + '"]'); return el ? el.value : ""; };
+    var name = val("name").trim();
+    var email = val("email").trim();
+    if (!name) return requestError("Please enter your name.");
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return requestError("Please enter a valid email.");
+
+    var btn = $("[data-submit-request]");
+    if (btn.disabled) return;
+    var label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Sending…";
+
+    fetch(REQUEST_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        name: name, email: email, quantity: val("quantity"), note: val("note"),
+        fragrance_name: it.n, brand: it.b, size: it.s, price: it.p, product_id: it.id,
+      }),
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (res.ok && res.d && res.d.ok) {
+          $("[data-request-form]").innerHTML =
+            '<div class="dd-request-form__done">' +
+              '<div class="dd-confirm__check">' + CHECK_SVG + '</div>' +
+              '<h3 class="dd-request-form__name">Request sent.</h3>' +
+              '<p class="dd-request-form__brand">We\'ve noted your interest in ' + esc(it.n) +
+                ' and will be in touch at ' + esc(email) + '.</p>' +
+              '<button type="button" class="dd-btn-gold dd-btn-gold--block" data-close-request>Done</button>' +
+            '</div>';
+        } else {
+          btn.disabled = false; btn.textContent = label;
+          requestError((res.d && res.d.error) || "Could not send. Please try again.");
+        }
+      })
+      .catch(function () {
+        btn.disabled = false; btn.textContent = label;
+        requestError("Could not send. Please try again.");
+      });
   }
 
   /* ---------- card rendering ---------- */
@@ -590,7 +738,8 @@
     document.addEventListener("click", function (e) {
       var t = e.target.closest("[data-inc],[data-dec],[data-sample],[data-go],[data-remove-box]," +
         "[data-open-drawer],[data-close-drawer],[data-add-samplebox],[data-go-checkout]," +
-        "[data-back-to-shop],[data-place-order],[data-continue-shopping],[data-close-product]");
+        "[data-back-to-shop],[data-place-order],[data-continue-shopping],[data-close-product]," +
+        "[data-request-frag],[data-close-request],[data-submit-request]");
       if (t) {
         if (t.hasAttribute("data-inc")) return inc(t.getAttribute("data-inc"));
         if (t.hasAttribute("data-dec")) return dec(t.getAttribute("data-dec"));
@@ -605,12 +754,27 @@
         if (t.hasAttribute("data-place-order")) return placeOrder();
         if (t.hasAttribute("data-continue-shopping")) return continueShopping();
         if (t.hasAttribute("data-close-product")) return closeProduct();
+        if (t.hasAttribute("data-request-frag")) return openRequest(t.getAttribute("data-request-frag"));
+        if (t.hasAttribute("data-close-request")) return closeRequest();
+        if (t.hasAttribute("data-submit-request")) return submitRequest();
         return;
       }
       // Non-control click on a card opens its detail modal.
       var card = e.target.closest("[data-open-product]");
       if (card) return openProduct(card.getAttribute("data-open-product"));
     });
+
+    // Request-library search: lazy-load the catalogue, then filter as they type.
+    var reqSearch = $("[data-request-search]");
+    if (reqSearch) {
+      reqSearch.addEventListener("focus", loadCatalogue);
+      reqSearch.addEventListener("input", function () {
+        loadCatalogue();
+        if (reqSearchTimer) clearTimeout(reqSearchTimer);
+        var v = reqSearch.value;
+        reqSearchTimer = setTimeout(function () { renderRequestResults(v); }, 120);
+      });
+    }
 
     // checkout form inputs
     $all("[data-field]").forEach(function (input) {
@@ -628,6 +792,7 @@
     // Esc closes the product modal first, then the drawer
     document.addEventListener("keydown", function (e) {
       if (e.key !== "Escape") return;
+      if (requestFrag) return closeRequest();
       if (state.productId) return closeProduct();
       if (state.drawerOpen) return closeDrawer();
     });

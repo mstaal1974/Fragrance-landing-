@@ -27,6 +27,7 @@
           <button type="button" class="dd-nav__link" data-go="dd-him">For Him</button>
           <button type="button" class="dd-nav__link" data-go="dd-her">For Her</button>
           <button type="button" class="dd-nav__link" data-go="dd-unisex">Unisex</button>
+          <button type="button" class="dd-nav__link" data-go="dd-request">Request</button>
         </nav>
         <button type="button" class="dd-cart-btn" data-open-drawer aria-label="Open bag">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"><circle cx="7" cy="7" r="5.3" stroke="#c9a961" stroke-width="1.1"/><circle cx="7" cy="7" r="1.4" fill="#c9a961"/></svg>
@@ -133,6 +134,20 @@
           </div>
         </div>
         <div class="dd-grid" data-grid="unisex"></div>
+      </section>
+
+      <!-- REQUEST A FRAGRANCE (full sourcing library) -->
+      <section id="dd-request" class="dd-wrap dd-request">
+        <div class="dd-request__head">
+          <div class="dd-eyebrow">The Full Library</div>
+          <h2 class="dd-collection__title">Can't find it? <span class="dd-em">Request any scent.</span></h2>
+          <p class="dd-request__sub">Search our full sourcing library of 3,000+ fragrances. Find one you'd like and send a request — we'll be in touch about availability.</p>
+        </div>
+        <div class="dd-request__search">
+          <input type="search" class="dd-input dd-request__input" data-request-search placeholder="Search by name or brand…" autocomplete="off" aria-label="Search the fragrance library">
+          <div class="dd-request__meta" data-request-meta></div>
+        </div>
+        <div class="dd-request__results" data-request-results></div>
       </section>
     </div>
 
@@ -246,6 +261,15 @@
       <div class="dd-modal" role="dialog" aria-modal="true" aria-label="Product details">
         <button type="button" class="dd-modal__close" data-close-product aria-label="Close">×</button>
         <div class="dd-modal__body" data-product-body></div>
+      </div>
+    </div>
+
+    <!-- REQUEST MODAL -->
+    <div data-request-modal hidden>
+      <div class="dd-modal__scrim" data-close-request></div>
+      <div class="dd-modal dd-modal--form" role="dialog" aria-modal="true" aria-label="Request a fragrance">
+        <button type="button" class="dd-modal__close" data-close-request aria-label="Close">×</button>
+        <div class="dd-request-form" data-request-form></div>
       </div>
     </div>
   </div>

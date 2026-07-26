@@ -55,4 +55,61 @@ async function saveOrder(order) {
   return data;
 }
 
-module.exports = { saveOrder: saveOrder, isConfigured: isConfigured };
+/* Plain insert of one row into `table`. Returns the inserted row(s); throws on
+ * error. Used for append-only tables like fragrance_requests. */
+async function insert(table, row) {
+  var c = config();
+  if (!c.url || !c.key) throw new Error("Supabase is not configured.");
+
+  var resp, data;
+  try {
+    resp = await fetch(c.url + "/rest/v1/" + encodeURIComponent(table), {
+      method: "POST",
+      headers: {
+        apikey: c.key,
+        Authorization: "Bearer " + c.key,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(row),
+    });
+  } catch (e) {
+    throw new Error("Could not reach Supabase.");
+  }
+  try { data = await resp.json(); } catch (e) { data = null; }
+  if (!resp.ok) {
+    var msg = (data && (data.message || data.error || data.hint)) || ("Supabase responded " + resp.status);
+    throw new Error(String(msg));
+  }
+  return data;
+}
+
+/* Read rows from `table`. opts: { order: "col.desc", limit: 200 }. Returns an
+ * array; throws on error. */
+async function list(table, opts) {
+  opts = opts || {};
+  var c = config();
+  if (!c.url || !c.key) throw new Error("Supabase is not configured.");
+
+  var params = [];
+  if (opts.order) params.push("order=" + encodeURIComponent(opts.order));
+  if (opts.limit) params.push("limit=" + encodeURIComponent(opts.limit));
+  var qs = params.length ? "?" + params.join("&") : "";
+
+  var resp, data;
+  try {
+    resp = await fetch(c.url + "/rest/v1/" + encodeURIComponent(table) + qs, {
+      headers: { apikey: c.key, Authorization: "Bearer " + c.key, Accept: "application/json" },
+    });
+  } catch (e) {
+    throw new Error("Could not reach Supabase.");
+  }
+  try { data = await resp.json(); } catch (e) { data = null; }
+  if (!resp.ok) {
+    var msg = (data && (data.message || data.error || data.hint)) || ("Supabase responded " + resp.status);
+    throw new Error(String(msg));
+  }
+  return Array.isArray(data) ? data : [];
+}
+
+module.exports = { saveOrder: saveOrder, insert: insert, list: list, isConfigured: isConfigured };
