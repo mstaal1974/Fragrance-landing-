@@ -141,8 +141,15 @@ well, add a mailer call inside `fulfilOrder` after the Supabase write.
 
 Below the three collections, the **Request a Fragrance** section lets visitors
 search the full sourcing library — 3,060 fragrances in `catalogue.json` — by
-name or brand. `catalogue.json` is fetched lazily (on first focus of the search
-box) and filtered client‑side, so it never slows the initial page load.
+brand or name. Results are **grouped by brand, then fragrance** (A–Z) so the
+list is easy to scan. `catalogue.json` is fetched lazily (on first focus of the
+search box) and filtered client‑side, so it never slows the initial page load.
+
+The same search also appears as a **popup that auto‑opens once per session,
+~10 seconds** after load — only while the visitor is still browsing the shop and
+nothing else is open (a `sessionStorage` flag stops it reappearing). The inline
+section stays in place regardless; the popup is an additional prompt, not a
+replacement.
 
 Picking a result opens a request modal (name, email, quantity, note). Submitting
 POSTs to `api/request.js`, which validates and stores the enquiry in Supabase's

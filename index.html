@@ -272,6 +272,22 @@
         <div class="dd-request-form" data-request-form></div>
       </div>
     </div>
+
+    <!-- LIBRARY SEARCH POPUP (auto-opens after 10s) -->
+    <div data-search-modal hidden>
+      <div class="dd-modal__scrim" data-close-search></div>
+      <div class="dd-modal dd-modal--search" role="dialog" aria-modal="true" aria-label="Search the fragrance library">
+        <button type="button" class="dd-modal__close" data-close-search aria-label="Close">×</button>
+        <div class="dd-search-pop">
+          <div class="dd-eyebrow">The Full Library</div>
+          <h3 class="dd-search-pop__title">Looking for something <span class="dd-em">specific?</span></h3>
+          <p class="dd-search-pop__sub">Search 3,000+ fragrances by brand or name, and request any of them.</p>
+          <input type="search" class="dd-input dd-search-pop__input" data-search-pop-input placeholder="Search by brand or name…" autocomplete="off" aria-label="Search the fragrance library">
+          <div class="dd-search-pop__meta" data-search-pop-meta></div>
+          <div class="dd-search-pop__results" data-search-pop-results></div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="data.js"></script>
