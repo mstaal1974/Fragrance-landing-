@@ -169,16 +169,33 @@
             </div>
 
             <div class="dd-form__block">
-              <div class="dd-form__label">Shipping Address</div>
+              <div class="dd-form__label">Delivery</div>
+              <div class="dd-delivery">
+                <label class="dd-delivery__opt dd-delivery__opt--on" data-delivery-opt="post">
+                  <input type="radio" name="delivery" value="post" data-delivery="post" checked>
+                  <span><span class="dd-delivery__name">Ship via Australia Post</span><small>Live rate to your address, calculated below.</small></span>
+                </label>
+                <label class="dd-delivery__opt" data-delivery-opt="alternate">
+                  <input type="radio" name="delivery" value="alternate" data-delivery="alternate">
+                  <span><span class="dd-delivery__name">Arrange alternate delivery</span><small>Hand delivery or via a friend — no postage charged.</small></span>
+                </label>
+              </div>
+            </div>
+
+            <div class="dd-form__block">
+              <div class="dd-form__label" data-address-label>Shipping Address</div>
               <div class="dd-form__rows">
                 <input type="text" class="dd-input" data-field="fullName" placeholder="Full name" autocomplete="name">
-                <input type="text" class="dd-input" data-field="address" placeholder="Street address" autocomplete="street-address">
-                <div class="dd-form__triple">
-                  <input type="text" class="dd-input" data-field="city" placeholder="City" autocomplete="address-level2">
-                  <input type="text" class="dd-input" data-field="region" placeholder="State" autocomplete="address-level1">
-                  <input type="text" class="dd-input" data-field="zip" placeholder="ZIP" autocomplete="postal-code">
+                <div class="dd-form__rows" data-postal-fields>
+                  <input type="text" class="dd-input" data-field="address" placeholder="Street address" autocomplete="street-address">
+                  <div class="dd-form__triple">
+                    <input type="text" class="dd-input" data-field="city" placeholder="City" autocomplete="address-level2">
+                    <input type="text" class="dd-input" data-field="region" placeholder="State" autocomplete="address-level1">
+                    <input type="text" class="dd-input" data-field="zip" placeholder="ZIP" autocomplete="postal-code">
+                  </div>
+                  <input type="text" class="dd-input" data-field="country" placeholder="Country" autocomplete="country-name">
                 </div>
-                <input type="text" class="dd-input" data-field="country" placeholder="Country" autocomplete="country-name">
+                <textarea class="dd-input dd-delivery__notes" data-field="deliveryNotes" data-delivery-notes placeholder="How should we get this to you? e.g. hand delivery, a pickup time, or a friend's name, address & contact." hidden></textarea>
               </div>
             </div>
 

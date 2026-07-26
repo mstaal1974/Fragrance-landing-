@@ -17,9 +17,16 @@ create table if not exists public.orders (
   ship_city          text,
   ship_region        text,
   ship_postcode      text,
+  delivery_method    text,                           -- 'post' or 'alternate'
+  delivery_notes     text,                           -- hand delivery / via a friend details
   status             text not null default 'paid',
   created_at         timestamptz not null default now()
 );
+
+-- If the orders table already exists from an earlier version, add the new
+-- delivery columns (safe to run repeatedly).
+alter table public.orders add column if not exists delivery_method text;
+alter table public.orders add column if not exists delivery_notes text;
 
 -- Lock the table down. The webhook writes with the service_role key, which
 -- bypasses Row Level Security, so it needs no policy. Enabling RLS with NO

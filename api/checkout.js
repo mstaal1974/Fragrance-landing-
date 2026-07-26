@@ -112,11 +112,15 @@ module.exports = async function handler(req, res) {
   meta("ship_city", body.ship_city, 100);
   meta("ship_region", body.ship_region, 100);
   if (/^\d{4}$/.test(pc)) metadata.ship_postcode = pc;
+  meta("delivery_method", body.delivery_method, 40);
+  meta("delivery_notes", body.delivery_notes, 500);
   meta("items", summary.join("; "), 490);
 
   // ---- recompute shipping server-side; omit (don't fail) if unavailable ----
+  // Alternate delivery (hand delivery / via a friend) is never charged postage.
+  var alternate = String(body.delivery_method || "").trim() === "alternate";
   var shipping_options = [];
-  if (/^\d{4}$/.test(pc)) {
+  if (!alternate && /^\d{4}$/.test(pc)) {
     var parcel = body.parcel || {};
     var quote = await auspost.quoteCheapest({
       to_postcode: pc, weight: parcel.weight, length: parcel.length, width: parcel.width, height: parcel.height,

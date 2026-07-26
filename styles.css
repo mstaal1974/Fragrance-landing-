@@ -284,6 +284,18 @@ body {
 }
 .dd-form__secure svg { flex: none; margin-top: 1px; }
 .dd-form__secure p { margin: 0; font-size: 12px; line-height: 1.6; color: rgba(243,236,220,0.62); }
+.dd-delivery { margin-top: 14px; display: grid; gap: 10px; }
+.dd-delivery__opt {
+  display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px;
+  border: 1px solid var(--line); background: var(--panel); cursor: pointer; transition: border-color 0.18s ease;
+}
+.dd-delivery__opt:hover { border-color: rgba(201,169,97,0.4); }
+.dd-delivery__opt--on { border-color: var(--gold); }
+.dd-delivery__opt input { margin-top: 3px; accent-color: var(--gold); flex: none; }
+.dd-delivery__opt > span { display: flex; flex-direction: column; gap: 3px; }
+.dd-delivery__name { font-size: 13px; color: var(--cream); }
+.dd-delivery__opt small { font-size: 11.5px; color: rgba(243,236,220,0.5); line-height: 1.4; }
+.dd-delivery__notes { min-height: 92px; resize: vertical; font-family: var(--sans); line-height: 1.5; }
 .dd-summary__secure-note {
   margin: 12px 0 0; text-align: center; font-family: var(--mono);
   font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(243,236,220,0.4);

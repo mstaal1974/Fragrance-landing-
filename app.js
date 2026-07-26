@@ -38,9 +38,10 @@
     drawerOpen: false,
     productId: null,     // fragrance id shown in the detail modal, or null
     showFormError: false,
+    deliveryMethod: "post", // "post" (Australia Post) | "alternate" (hand delivery / via a friend)
     checkoutForm: {
       email: "", fullName: "", address: "", city: "", region: "",
-      zip: "", country: "",
+      zip: "", country: "", deliveryNotes: "",
     },
     // Australia Post shipping quote for the current postcode.
     // status: idle | loading | ready | error
@@ -74,7 +75,10 @@
   function bottleSubtotal() { return cartIds().reduce(function (sum, id) { return sum + state.cart[id] * PRICE; }, 0); }
   function boxSubtotal() { return state.sampleBoxes.length * BOX_PRICE; }
   function subtotal() { return bottleSubtotal() + boxSubtotal(); }
-  function shippingCost() { return state.shipping.status === "ready" ? state.shipping.cost : 0; }
+  function shippingCost() {
+    if (state.deliveryMethod === "alternate") return 0; // arranged separately, no postage
+    return state.shipping.status === "ready" ? state.shipping.cost : 0;
+  }
   function orderTotal() { return subtotal() + shippingCost(); }
   function money(n) { return "$" + (Math.round(n * 100) / 100).toFixed(2).replace(/\.00$/, ""); }
 
@@ -570,6 +574,7 @@
     shipTimer = setTimeout(requestShippingQuote, 450);
   }
   function requestShippingQuote() {
+    if (state.deliveryMethod === "alternate") { shipSeq++; return; } // no postage for alternate delivery
     var pc = String(state.checkoutForm.zip || "").trim();
     if (!/^\d{4}$/.test(pc) || !hasAnyItems()) {
       shipSeq++; // cancel any in-flight response
@@ -599,10 +604,16 @@
       });
   }
   function renderShipping() {
-    var s = state.shipping;
     var cell = $("[data-summary-shipping]");
     var note = $("[data-summary-shipping-note]");
     note.classList.remove("dd-summary__ship-note--error");
+    if (state.deliveryMethod === "alternate") {
+      cell.textContent = "Free";
+      note.hidden = false;
+      note.textContent = "Alternate delivery — arranged with you";
+      return;
+    }
+    var s = state.shipping;
     if (s.status === "ready") {
       cell.textContent = money(s.cost);
       note.hidden = false;
@@ -620,7 +631,33 @@
       note.hidden = true;
     }
   }
+  // Show/hide the postal address vs the alternate-delivery notes, and highlight
+  // the chosen option.
+  function renderDeliveryMethod() {
+    var alt = state.deliveryMethod === "alternate";
+    var postal = $("[data-postal-fields]");
+    var notes = $("[data-delivery-notes]");
+    if (postal) postal.hidden = alt;
+    if (notes) notes.hidden = !alt;
+    var label = $("[data-address-label]");
+    if (label) label.textContent = alt ? "Delivery Details" : "Shipping Address";
+    $all("[data-delivery-opt]").forEach(function (el) {
+      el.classList.toggle("dd-delivery__opt--on", el.getAttribute("data-delivery-opt") === state.deliveryMethod);
+    });
+    var radio = $('[data-delivery="' + state.deliveryMethod + '"]');
+    if (radio) radio.checked = true;
+  }
+  function setDeliveryMethod(method) {
+    if (method !== "post" && method !== "alternate") return;
+    state.deliveryMethod = method;
+    renderDeliveryMethod();
+    if (state.showFormError) { state.showFormError = false; $("[data-form-error]").hidden = true; }
+    if (method === "post") requestShippingQuote(); else shipSeq++;
+    renderCheckout();
+  }
+
   function renderCheckout() {
+    renderDeliveryMethod();
     $("[data-summary-lines]").innerHTML = checkoutSummaryHTML();
     $("[data-summary-subtotal]").textContent = money(subtotal());
     renderShipping();
@@ -643,13 +680,17 @@
   // the server recomputes every amount, so the client cannot set its own price.
   function orderPayload() {
     var p = parcelSpec();
+    var alt = state.deliveryMethod === "alternate";
     return {
       email: String(state.checkoutForm.email || "").trim(),
-      to_postcode: String(state.checkoutForm.zip || "").trim(),
+      // Alternate delivery sends no postcode, so the server adds no postage.
+      to_postcode: alt ? "" : String(state.checkoutForm.zip || "").trim(),
+      delivery_method: state.deliveryMethod,
+      delivery_notes: alt ? String(state.checkoutForm.deliveryNotes || "").trim() : "",
       ship_name: String(state.checkoutForm.fullName || "").trim(),
-      ship_address: String(state.checkoutForm.address || "").trim(),
-      ship_city: String(state.checkoutForm.city || "").trim(),
-      ship_region: String(state.checkoutForm.region || "").trim(),
+      ship_address: alt ? "" : String(state.checkoutForm.address || "").trim(),
+      ship_city: alt ? "" : String(state.checkoutForm.city || "").trim(),
+      ship_region: alt ? "" : String(state.checkoutForm.region || "").trim(),
       parcel: { weight: p.weight, length: p.length, width: p.width, height: p.height },
       bottles: cartIds().map(function (id) {
         return { name: fragById(id).name, qty: state.cart[id] };
@@ -669,9 +710,14 @@
 
   function placeOrder() {
     var f = state.checkoutForm;
-    var required = [f.email, f.fullName, f.address, f.city, f.zip];
-    if (required.some(function (v) { return !String(v).trim(); }) || !hasAnyItems()) {
-      return showCheckoutError("Please fill in your email and shipping address.");
+    if (state.deliveryMethod === "alternate") {
+      if ([f.email, f.fullName, f.deliveryNotes].some(function (v) { return !String(v).trim(); }) || !hasAnyItems()) {
+        return showCheckoutError("Please fill in your email, name and delivery details.");
+      }
+    } else {
+      if ([f.email, f.fullName, f.address, f.city, f.zip].some(function (v) { return !String(v).trim(); }) || !hasAnyItems()) {
+        return showCheckoutError("Please fill in your email and shipping address.");
+      }
     }
 
     var btn = $("[data-place-order]");
@@ -762,9 +808,10 @@
     state.sampleSelection = [];
     state.orderNumber = null;
     state.showFormError = false;
+    state.deliveryMethod = "post";
     state.checkoutForm = {
       email: "", fullName: "", address: "", city: "", region: "",
-      zip: "", country: "",
+      zip: "", country: "", deliveryNotes: "",
     };
     state.shipping = { status: "idle", cost: 0, service: "", postcode: "", error: "" };
     shipSeq++;
@@ -845,6 +892,13 @@
           state.showFormError = false;
           $("[data-form-error]").hidden = true;
         }
+      });
+    });
+
+    // delivery method (Australia Post vs alternate)
+    $all("[data-delivery]").forEach(function (radio) {
+      radio.addEventListener("change", function () {
+        if (radio.checked) setDeliveryMethod(radio.getAttribute("data-delivery"));
       });
     });
 

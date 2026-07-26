@@ -83,17 +83,22 @@
     },
     orders: {
       endpoint: "/api/orders", key: "orders", heading: "Paid Orders",
-      csv: ["created_at","amount_total","currency","items","name","email","ship_address","ship_city","ship_region","ship_postcode","status","stripe_session_id","payment_intent_id"],
-      cols: ["When","Items","Amount","Customer","Email","Ship to","Status","Ref"],
+      csv: ["created_at","amount_total","currency","items","name","email","delivery_method","delivery_notes","ship_address","ship_city","ship_region","ship_postcode","status","stripe_session_id","payment_intent_id"],
+      cols: ["When","Items","Amount","Customer","Email","Delivery","Status","Ref"],
       row: function(r){
         var amt = (typeof r.amount_total === "number") ? ("$"+(r.amount_total/100).toFixed(2)+" "+String(r.currency||"").toUpperCase()) : "";
-        var ship = [r.ship_address, r.ship_city, r.ship_postcode].filter(Boolean).map(esc).join(", ");
+        var delivery;
+        if (r.delivery_method === "alternate") {
+          delivery = "<div class='brand'>Alternate delivery</div><div class='muted'>"+esc(r.delivery_notes||"")+"</div>";
+        } else {
+          delivery = "<div class='muted'>"+[r.ship_address, r.ship_city, r.ship_postcode].filter(Boolean).map(esc).join(", ")+"</div>";
+        }
         return "<td class='muted'>"+esc(fmtDate(r.created_at))+"</td>"+
           "<td class='strong'>"+esc(r.items||"")+"</td>"+
           "<td class='amount'>"+amt+"</td>"+
           "<td>"+esc(r.name||"")+"</td>"+
           "<td><a href='mailto:"+esc(r.email||"")+"'>"+esc(r.email||"")+"</a></td>"+
-          "<td class='muted'>"+ship+"</td>"+
+          "<td>"+delivery+"</td>"+
           "<td>"+esc(r.status||"")+"</td>"+
           "<td class='ref'>"+esc(String(r.stripe_session_id||"").slice(-12))+"</td>";
       }

@@ -178,6 +178,15 @@ secure source of truth is always the **Supabase dashboard** (Table editor →
 To regenerate `catalogue.json` from an updated spreadsheet, re‑export the same
 `{id,n,b,s,p}` shape (name `n`, brand `b`, size `s`, price `p`).
 
+## Delivery options
+
+Checkout offers two delivery methods. **Ship via Australia Post** is the default
+and quotes a live rate (below). **Arrange alternate delivery** — for this
+family‑&‑friends drop — hides the postal address, shows a free‑text field for
+hand‑delivery / via‑a‑friend details, charges **no postage**, and records the
+method and notes on the order (`delivery_method` / `delivery_notes`, shown in the
+admin Orders tab and stored in Supabase).
+
 ## Shipping (Australia Post PAC)
 
 At checkout, entering a 4‑digit Australian postcode fetches the cheapest
