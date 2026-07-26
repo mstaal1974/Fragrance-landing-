@@ -26,6 +26,8 @@ shipping cost.
 | `api/requests.js` | Vercel serverless function — token‑gated admin list of requests, read by `admin.html`. |
 | `catalogue.json` | The searchable wholesale library (3,060 fragrances) powering the Request section. |
 | `admin.html` | Standalone admin view of fragrance requests (gated by `ADMIN_TOKEN`). |
+| `privacy.html` | Privacy Policy (Australian Privacy Principles), linked in the footer. |
+| `refunds.html` | Refunds &amp; Returns Policy (Australian Consumer Law), linked in the footer. |
 | `supabase/schema.sql` | One‑time SQL to create the `orders` and `fragrance_requests` tables. |
 | `api/shipping.js` | Vercel serverless proxy to the Australia Post PAC domestic‑parcel API. |
 | `api/_auspost.js` | Shared Australia Post quote helper used by `shipping.js` and `checkout.js`. |
