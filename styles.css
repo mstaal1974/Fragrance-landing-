@@ -457,8 +457,6 @@ body {
 .dd-req-row + .dd-req-row { margin-top: 8px; }
 .dd-req-row__main { flex: 1 1 auto; min-width: 0; }
 .dd-req-row__name { font-size: 13.5px; color: var(--cream); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.dd-req-row__size { margin-top: 3px; font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(243,236,220,0.4); }
-.dd-req-row__price { font-family: var(--mono); font-size: 12px; color: rgba(243,236,220,0.7); flex: none; }
 .dd-req-row__btn {
   flex: none; background: none; border: 1px solid var(--line); color: rgba(243,236,220,0.7); cursor: pointer;
   height: 34px; padding: 0 18px; font-size: 9.5px; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 600;

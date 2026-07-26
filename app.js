@@ -290,13 +290,13 @@
   }
 
   function rowHTML(it) {
-    var price = it.p != null ? ("$" + it.p) : "";
+    // Customer-facing rows show only the fragrance name + Request button.
+    // Size/price are wholesale details — kept out of view but still stored
+    // with the request for the admin.
     return '<div class="dd-req-row">' +
       '<div class="dd-req-row__main">' +
         '<div class="dd-req-row__name">' + esc(it.n) + '</div>' +
-        (it.s ? '<div class="dd-req-row__size">' + esc(it.s) + '</div>' : '') +
       '</div>' +
-      '<div class="dd-req-row__price">' + price + '</div>' +
       '<button type="button" class="dd-req-row__btn" data-request-frag="' + esc(it.id) + '">Request</button>' +
     '</div>';
   }
@@ -368,11 +368,10 @@
   function renderRequestForm() {
     var it = requestFrag;
     if (!it) return;
-    var price = it.p != null ? (" · $" + it.p) : "";
     $("[data-request-form]").innerHTML =
       '<div class="dd-eyebrow">Request Fragrance</div>' +
       '<h3 class="dd-request-form__name">' + esc(it.n) + '</h3>' +
-      '<div class="dd-request-form__brand">' + esc(it.b) + (it.s ? " · " + esc(it.s) : "") + price + '</div>' +
+      '<div class="dd-request-form__brand">' + esc(it.b) + '</div>' +
       '<div class="dd-request-form__fields">' +
         '<input type="text" class="dd-input" data-req-field="name" placeholder="Your name" autocomplete="name">' +
         '<input type="email" class="dd-input" data-req-field="email" placeholder="Email address" autocomplete="email">' +
