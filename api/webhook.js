@@ -100,6 +100,7 @@ async function fulfilOrder(session) {
     ship_postcode: m.ship_postcode || null,
     delivery_method: m.delivery_method || null,
     delivery_notes: m.delivery_notes || null,
+    mobile: m.mobile || null,
     status: "paid",
   };
 
