@@ -534,6 +534,25 @@ body {
 .dd-search-pop__meta { margin-top: 10px; flex: none; font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(243,236,220,0.45); }
 .dd-search-pop__results { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin-top: 16px; padding-bottom: 26px; }
 
+/* ---------- SAMPLE BOX UPSELL NUDGE ---------- */
+.dd-nudge {
+  position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%); z-index: 96;
+  max-width: 92vw; display: flex; align-items: center; gap: 14px;
+  background: var(--panel-dark); border: 1px solid var(--gold); padding: 14px 16px 14px 20px;
+  box-shadow: 0 14px 44px rgba(0,0,0,0.55); animation: ddNudgeIn 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes ddNudgeIn { from { opacity: 0; transform: translate(-50%, 14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.dd-nudge svg { flex: none; }
+.dd-nudge__body { font-size: 13px; line-height: 1.5; color: var(--cream); }
+.dd-nudge__body strong { color: var(--gold); font-weight: 600; }
+.dd-nudge__close {
+  background: none; border: 0; color: rgba(243,236,220,0.5); font-size: 20px; line-height: 1; cursor: pointer;
+  flex: none; font-family: var(--sans); transition: color 0.18s ease, transform 140ms ease-out;
+}
+.dd-nudge__close:hover { color: var(--gold); }
+.dd-nudge__close:active { transform: scale(0.9); }
+@media (prefers-reduced-motion: reduce) { .dd-nudge { animation: none; } }
+
 /* ---------- RESPONSIVE ---------- */
 @media (max-width: 1040px) {
   .dd-hero__inner { grid-template-columns: 1fr; gap: 24px; min-height: 0; }
