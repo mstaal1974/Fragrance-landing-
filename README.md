@@ -72,18 +72,9 @@ To point the front‑end at different endpoints, set
 `app.js` loads. If `STRIPE_SECRET_KEY` is missing, Place Order surfaces a clear
 error instead of proceeding.
 
-**Clean product reporting (optional Catalog Prices):** by default checkout
-builds each line item with ad‑hoc `price_data`, so no Stripe products need
-maintaining. If you'd rather see clean "bottles vs boxes" totals in the Stripe
-dashboard, create two **one‑time** Prices — a *10ml Discovery Bottle* at $12 and
-a *Sample Box (5 × 10ml)* at $50 — and set their IDs as `STRIPE_PRICE_BOTTLE`
-and `STRIPE_PRICE_BOX`. Checkout then references those Prices instead. All
-bottles share one Price, so they collapse into a single line item with the
-summed quantity (Stripe forbids duplicate price IDs on one session); the
-per‑scent breakdown is still recorded in the session metadata (and in Supabase).
-Leave the two vars blank to keep inline pricing. This is the recommended middle
-ground — two Prices, not a 32‑product catalog. Make sure the Prices are one‑time
-(not recurring) and in the same currency as `STRIPE_CURRENCY`.
+Checkout builds one line item per scent with ad‑hoc `price_data`, so each
+fragrance appears by name on the Stripe checkout and receipt (e.g. "Smoky
+Obsidian — 10ml"). No Stripe products need to be created or maintained.
 
 **Switching to on‑page card fields:** this uses hosted redirect (simplest, most
 secure). To keep buyers on the page instead, swap to Stripe's embedded
