@@ -41,7 +41,7 @@
     deliveryMethod: "post", // "post" (Australia Post) | "alternate" (hand delivery / via a friend)
     checkoutForm: {
       email: "", fullName: "", address: "", city: "", region: "",
-      zip: "", country: "", deliveryNotes: "",
+      zip: "", country: "", deliveryNotes: "", mobile: "",
     },
     // Australia Post shipping quote for the current postcode.
     // status: idle | loading | ready | error
@@ -662,8 +662,10 @@
     var alt = state.deliveryMethod === "alternate";
     var postal = $("[data-postal-fields]");
     var notes = $("[data-delivery-notes]");
+    var mobile = $("[data-delivery-mobile]");
     if (postal) postal.hidden = alt;
     if (notes) notes.hidden = !alt;
+    if (mobile) mobile.hidden = !alt;
     var label = $("[data-address-label]");
     if (label) label.textContent = alt ? "Delivery Details" : "Shipping Address";
     $all("[data-delivery-opt]").forEach(function (el) {
@@ -712,6 +714,7 @@
       to_postcode: alt ? "" : String(state.checkoutForm.zip || "").trim(),
       delivery_method: state.deliveryMethod,
       delivery_notes: alt ? String(state.checkoutForm.deliveryNotes || "").trim() : "",
+      mobile: alt ? String(state.checkoutForm.mobile || "").trim() : "",
       ship_name: String(state.checkoutForm.fullName || "").trim(),
       ship_address: alt ? "" : String(state.checkoutForm.address || "").trim(),
       ship_city: alt ? "" : String(state.checkoutForm.city || "").trim(),
@@ -736,8 +739,8 @@
   function placeOrder() {
     var f = state.checkoutForm;
     if (state.deliveryMethod === "alternate") {
-      if ([f.email, f.fullName, f.deliveryNotes].some(function (v) { return !String(v).trim(); }) || !hasAnyItems()) {
-        return showCheckoutError("Please fill in your email, name and delivery details.");
+      if ([f.email, f.fullName, f.mobile, f.deliveryNotes].some(function (v) { return !String(v).trim(); }) || !hasAnyItems()) {
+        return showCheckoutError("Please fill in your email, name, mobile and delivery details.");
       }
     } else {
       if ([f.email, f.fullName, f.address, f.city, f.zip].some(function (v) { return !String(v).trim(); }) || !hasAnyItems()) {
@@ -836,7 +839,7 @@
     state.deliveryMethod = "post";
     state.checkoutForm = {
       email: "", fullName: "", address: "", city: "", region: "",
-      zip: "", country: "", deliveryNotes: "",
+      zip: "", country: "", deliveryNotes: "", mobile: "",
     };
     state.shipping = { status: "idle", cost: 0, service: "", postcode: "", error: "" };
     shipSeq++;

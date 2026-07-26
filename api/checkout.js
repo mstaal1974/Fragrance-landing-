@@ -114,6 +114,7 @@ module.exports = async function handler(req, res) {
   if (/^\d{4}$/.test(pc)) metadata.ship_postcode = pc;
   meta("delivery_method", body.delivery_method, 40);
   meta("delivery_notes", body.delivery_notes, 500);
+  meta("mobile", body.mobile, 40);
   meta("items", summary.join("; "), 490);
 
   // ---- recompute shipping server-side; omit (don't fail) if unavailable ----
