@@ -4,19 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Requests · Maison Obsidian Admin</title>
+<title>Admin · Maison Obsidian</title>
 <style>
   :root { --bg:#0b0b0d; --panel:#101015; --line:#1f1f27; --gold:#c9a961; --cream:#f3ecdc; --mono:'Space Mono',monospace; }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--cream); font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
-  .wrap { max-width:1100px; margin:0 auto; padding:40px 24px 80px; }
+  .wrap { max-width:1200px; margin:0 auto; padding:40px 24px 80px; }
   h1 { font-weight:400; font-size:26px; margin:0 0 4px; }
   .sub { font-family:var(--mono); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); }
-  .bar { display:flex; gap:10px; align-items:center; margin:24px 0; flex-wrap:wrap; }
+  .tabs { display:flex; gap:8px; margin:22px 0 0; }
+  .tab { background:none; border:1px solid var(--line); color:rgba(243,236,220,0.6); padding:9px 20px; font-size:12px; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; }
+  .tab.active { border-color:var(--gold); color:var(--gold); }
+  .bar { display:flex; gap:10px; align-items:center; margin:18px 0; flex-wrap:wrap; }
   input[type=password]{ background:var(--panel); border:1px solid var(--line); color:var(--cream); padding:10px 14px; font-size:14px; min-width:280px; outline:none; }
   input:focus { border-color:rgba(201,169,97,0.5); }
-  button { background:var(--gold); color:var(--bg); border:0; padding:10px 20px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; font-size:12px; cursor:pointer; }
-  button.ghost { background:none; color:rgba(243,236,220,0.6); border:1px solid var(--line); }
+  button.go { background:var(--gold); color:var(--bg); border:0; padding:10px 20px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; font-size:12px; cursor:pointer; }
+  button.ghost { background:none; color:rgba(243,236,220,0.6); border:1px solid var(--line); padding:10px 16px; text-transform:uppercase; font-size:12px; letter-spacing:0.08em; cursor:pointer; }
   .msg { font-size:13px; color:rgba(243,236,220,0.6); margin:8px 0; }
   .msg.err { color:#c9887a; }
   .count { font-family:var(--mono); font-size:11px; color:rgba(243,236,220,0.5); margin-bottom:12px; }
@@ -24,9 +27,11 @@
   th, td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
   th { font-family:var(--mono); font-size:9.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--gold); position:sticky; top:0; background:var(--bg); }
   tr:hover td { background:rgba(255,255,255,0.02); }
-  .frag { color:var(--cream); }
+  .strong { color:var(--cream); }
   .brand { font-family:var(--mono); font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(243,236,220,0.5); }
+  .amount { font-family:var(--mono); color:var(--gold); white-space:nowrap; }
   .muted { color:rgba(243,236,220,0.5); }
+  .ref { font-family:var(--mono); font-size:10px; color:rgba(243,236,220,0.4); }
   a { color:var(--gold); }
   .scroll { overflow-x:auto; border:1px solid var(--line); }
 </style>
@@ -34,20 +39,23 @@
 <body>
   <div class="wrap">
     <div class="sub">Maison Obsidian · Admin</div>
-    <h1>Fragrance Requests</h1>
+    <h1 id="heading">Fragrance Requests</h1>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="requests">Requests</button>
+      <button class="tab" data-tab="orders">Orders</button>
+    </div>
 
     <div class="bar">
       <input type="password" id="token" placeholder="Admin token" autocomplete="current-password">
-      <button id="load">View requests</button>
+      <button class="go" id="load">View</button>
       <button class="ghost" id="refresh" hidden>Refresh</button>
       <button class="ghost" id="csv" hidden>Export CSV</button>
     </div>
     <p class="msg" id="msg"></p>
     <div class="count" id="count"></div>
     <div class="scroll"><table id="table" hidden>
-      <thead><tr>
-        <th>When</th><th>Fragrance</th><th>Qty</th><th>Requester</th><th>Email</th><th>Note</th><th>Status</th>
-      </tr></thead>
+      <thead><tr id="head"></tr></thead>
       <tbody id="rows"></tbody>
     </table></div>
   </div>
@@ -55,58 +63,96 @@
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
-  var ENDPOINT = "/api/requests";
+  var tab = "requests";
   var rowsData = [];
+
+  var VIEWS = {
+    requests: {
+      endpoint: "/api/requests", key: "requests", heading: "Fragrance Requests",
+      csv: ["created_at","fragrance_name","brand","size","price","quantity","requester_name","email","note","status","product_id"],
+      cols: ["When","Fragrance","Qty","Requester","Email","Note","Status"],
+      row: function(r){
+        return "<td class='muted'>"+esc(fmtDate(r.created_at))+"</td>"+
+          "<td><div class='strong'>"+esc(r.fragrance_name)+"</div><div class='brand'>"+esc(r.brand||"")+(r.size?" · "+esc(r.size):"")+(r.price!=null?" · $"+esc(r.price):"")+"</div></td>"+
+          "<td>"+esc(r.quantity)+"</td>"+
+          "<td>"+esc(r.requester_name)+"</td>"+
+          "<td><a href='mailto:"+esc(r.email)+"'>"+esc(r.email)+"</a></td>"+
+          "<td class='muted'>"+esc(r.note||"")+"</td>"+
+          "<td>"+esc(r.status||"")+"</td>";
+      }
+    },
+    orders: {
+      endpoint: "/api/orders", key: "orders", heading: "Paid Orders",
+      csv: ["created_at","amount_total","currency","items","name","email","ship_address","ship_city","ship_region","ship_postcode","status","stripe_session_id","payment_intent_id"],
+      cols: ["When","Items","Amount","Customer","Email","Ship to","Status","Ref"],
+      row: function(r){
+        var amt = (typeof r.amount_total === "number") ? ("$"+(r.amount_total/100).toFixed(2)+" "+String(r.currency||"").toUpperCase()) : "";
+        var ship = [r.ship_address, r.ship_city, r.ship_postcode].filter(Boolean).map(esc).join(", ");
+        return "<td class='muted'>"+esc(fmtDate(r.created_at))+"</td>"+
+          "<td class='strong'>"+esc(r.items||"")+"</td>"+
+          "<td class='amount'>"+amt+"</td>"+
+          "<td>"+esc(r.name||"")+"</td>"+
+          "<td><a href='mailto:"+esc(r.email||"")+"'>"+esc(r.email||"")+"</a></td>"+
+          "<td class='muted'>"+ship+"</td>"+
+          "<td>"+esc(r.status||"")+"</td>"+
+          "<td class='ref'>"+esc(String(r.stripe_session_id||"").slice(-12))+"</td>";
+      }
+    }
+  };
 
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
   function fmtDate(s){ if(!s) return ""; var d=new Date(s); return isNaN(d)?esc(s):d.toLocaleString(); }
+  function msg(t, err){ var m=$("msg"); m.textContent=t; m.className = "msg" + (err?" err":""); }
 
   function render(list){
+    var v = VIEWS[tab];
     rowsData = list;
-    $("rows").innerHTML = list.map(function(r){
-      return "<tr>"+
-        "<td class='muted'>"+esc(fmtDate(r.created_at))+"</td>"+
-        "<td><div class='frag'>"+esc(r.fragrance_name)+"</div><div class='brand'>"+esc(r.brand||"")+(r.size?" · "+esc(r.size):"")+(r.price!=null?" · $"+esc(r.price):"")+"</div></td>"+
-        "<td>"+esc(r.quantity)+"</td>"+
-        "<td>"+esc(r.requester_name)+"</td>"+
-        "<td><a href='mailto:"+esc(r.email)+"'>"+esc(r.email)+"</a></td>"+
-        "<td class='muted'>"+esc(r.note||"")+"</td>"+
-        "<td>"+esc(r.status||"")+"</td>"+
-      "</tr>";
-    }).join("");
+    $("head").innerHTML = v.cols.map(function(c){ return "<th>"+c+"</th>"; }).join("");
+    $("rows").innerHTML = list.map(function(r){ return "<tr>"+v.row(r)+"</tr>"; }).join("");
     $("table").hidden = list.length === 0;
-    $("count").textContent = list.length + " request" + (list.length===1?"":"s");
+    $("count").textContent = list.length + " " + (list.length===1 ? v.key.replace(/s$/,"") : v.key);
     $("refresh").hidden = false;
     $("csv").hidden = list.length === 0;
   }
 
   function load(){
+    var v = VIEWS[tab];
     var token = $("token").value.trim();
     if(!token){ msg("Enter the admin token.", true); return; }
     try { localStorage.setItem("mo_admin_token", token); } catch(e){}
     msg("Loading…", false);
-    fetch(ENDPOINT, { headers: { Authorization: "Bearer " + token, Accept: "application/json" } })
+    fetch(v.endpoint, { headers: { Authorization: "Bearer " + token, Accept: "application/json" } })
       .then(function(r){ return r.json().then(function(d){ return {status:r.status, d:d}; }); })
       .then(function(res){
-        if(res.status===200 && res.d && res.d.ok){ msg("", false); render(res.d.requests||[]); }
+        if(res.status===200 && res.d && res.d.ok){ msg("", false); render(res.d[v.key]||[]); }
         else if(res.status===401){ msg("Unauthorized — check the token.", true); }
-        else { msg((res.d && res.d.error) || "Could not load requests.", true); }
+        else { msg((res.d && res.d.error) || "Could not load.", true); }
       })
       .catch(function(){ msg("Network error.", true); });
   }
 
-  function msg(t, err){ var m=$("msg"); m.textContent=t; m.className = "msg" + (err?" err":""); }
-
   function toCSV(){
-    var cols = ["created_at","fragrance_name","brand","size","price","quantity","requester_name","email","note","status","product_id"];
-    var esc2 = function(v){ v=String(v==null?"":v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; };
+    var cols = VIEWS[tab].csv;
+    var esc2 = function(val){ val=String(val==null?"":val); return /[",\n]/.test(val) ? '"'+val.replace(/"/g,'""')+'"' : val; };
     var lines = [cols.join(",")].concat(rowsData.map(function(r){ return cols.map(function(c){ return esc2(r[c]); }).join(","); }));
     var blob = new Blob([lines.join("\n")], { type:"text/csv" });
     var a = document.createElement("a");
-    a.href = URL.createObjectURL(blob); a.download = "fragrance-requests.csv"; a.click();
+    a.href = URL.createObjectURL(blob); a.download = "maison-obsidian-"+tab+".csv"; a.click();
     URL.revokeObjectURL(a.href);
   }
 
+  function switchTab(next){
+    if(next === tab) return;
+    tab = next;
+    Array.prototype.forEach.call(document.querySelectorAll(".tab"), function(b){ b.classList.toggle("active", b.getAttribute("data-tab")===tab); });
+    $("heading").textContent = VIEWS[tab].heading;
+    $("table").hidden = true; $("rows").innerHTML=""; $("count").textContent=""; $("csv").hidden=true; $("refresh").hidden=true;
+    if($("token").value.trim()) load(); // auto-load the other tab if already authed
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll(".tab"), function(b){
+    b.addEventListener("click", function(){ switchTab(b.getAttribute("data-tab")); });
+  });
   $("load").addEventListener("click", load);
   $("refresh").addEventListener("click", load);
   $("csv").addEventListener("click", toCSV);

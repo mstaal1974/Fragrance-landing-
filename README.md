@@ -24,8 +24,9 @@ shipping cost.
 | `api/_supabase.js` | Shared helper that reads/writes Supabase via its REST API (service‑role key, server‑side only). |
 | `api/request.js` | Vercel serverless function that stores a fragrance request in Supabase. |
 | `api/requests.js` | Vercel serverless function — token‑gated admin list of requests, read by `admin.html`. |
+| `api/orders.js` | Vercel serverless function — token‑gated admin list of paid orders, read by `admin.html`. |
 | `catalogue.json` | The searchable wholesale library (3,060 fragrances) powering the Request section. |
-| `admin.html` | Standalone admin view of fragrance requests (gated by `ADMIN_TOKEN`). |
+| `admin.html` | Standalone admin view — Requests and Orders tabs (gated by `ADMIN_TOKEN`). |
 | `privacy.html` | Privacy Policy (Australian Privacy Principles), linked in the footer. |
 | `refunds.html` | Refunds &amp; Returns Policy (Australian Consumer Law), linked in the footer. |
 | `supabase/schema.sql` | One‑time SQL to create the `orders` and `fragrance_requests` tables. |
