@@ -175,7 +175,7 @@
     if (!fragById(id)) return;
     state.productId = id;
     $("[data-product-modal]").hidden = false;
-    document.body.style.overflow = "hidden"; // lock background scroll
+    updateScrollLock();
     renderProduct();
     var close = $("[data-product-modal] [data-close-product]");
     if (close) close.focus();
@@ -183,7 +183,7 @@
   function closeProduct() {
     state.productId = null;
     $("[data-product-modal]").hidden = true;
-    document.body.style.overflow = "";
+    updateScrollLock();
   }
   function refreshProduct() { if (state.productId) renderProduct(); }
 
@@ -243,45 +243,86 @@
   var catalogue = null;         // lazily loaded from catalogue.json
   var catalogueLoading = false;
   var reqSearchTimer = null;
+  var popSearchTimer = null;
   var requestFrag = null;       // item selected for the request modal
+  var searchOpen = false;       // the timed/library search popup
 
-  function loadCatalogue() {
-    if (catalogue || catalogueLoading) return;
+  // Lock background scroll while any overlay is open; restore when all closed.
+  function updateScrollLock() {
+    var any = searchOpen || !!requestFrag || !!state.productId;
+    document.body.style.overflow = any ? "hidden" : "";
+  }
+
+  function loadCatalogue(cb) {
+    if (catalogue) { if (cb) cb(); return; }
+    if (catalogueLoading) return;
     catalogueLoading = true;
-    var meta = $("[data-request-meta]");
-    if (meta) meta.textContent = "Loading library…";
+    [$("[data-request-meta]"), $("[data-search-pop-meta]")].forEach(function (m) { if (m) m.textContent = "Loading library…"; });
     fetch(CATALOGUE_URL, { headers: { Accept: "application/json" } })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         catalogue = Array.isArray(data) ? data : [];
         catalogueLoading = false;
-        renderRequestResults($("[data-request-search]").value);
+        var inline = $("[data-request-search]"); if (inline) renderRequestResults(inline.value);
+        var pop = $("[data-search-pop-input]"); if (pop) renderPopupResults(pop.value);
+        if (cb) cb();
       })
       .catch(function () {
         catalogueLoading = false;
-        if (meta) meta.textContent = "Couldn't load the library — please refresh.";
+        [$("[data-request-meta]"), $("[data-search-pop-meta]")].forEach(function (m) { if (m) m.textContent = "Couldn't load the library — please refresh."; });
       });
   }
 
+  // Match name + brand; return brand-first, then fragrance name (A–Z).
   function searchCatalogue(q) {
     q = String(q || "").trim().toLowerCase();
     if (!q || !catalogue) return { total: 0, items: [] };
     var terms = q.split(/\s+/);
     var matches = catalogue.filter(function (it) {
-      var hay = (it.n + " " + it.b).toLowerCase();
+      var hay = (it.b + " " + it.n).toLowerCase();
       return terms.every(function (t) { return hay.indexOf(t) !== -1; });
     });
-    return { total: matches.length, items: matches.slice(0, 40) };
+    matches.sort(function (a, b) {
+      if (a.b !== b.b) return a.b < b.b ? -1 : 1;   // brand first
+      return a.n < b.n ? -1 : a.n > b.n ? 1 : 0;    // then fragrance name
+    });
+    return { total: matches.length, items: matches.slice(0, 60) };
   }
 
-  function renderRequestResults(q) {
-    var wrap = $("[data-request-results]");
-    var meta = $("[data-request-meta]");
+  function rowHTML(it) {
+    var price = it.p != null ? ("$" + it.p) : "";
+    return '<div class="dd-req-row">' +
+      '<div class="dd-req-row__main">' +
+        '<div class="dd-req-row__name">' + esc(it.n) + '</div>' +
+        (it.s ? '<div class="dd-req-row__size">' + esc(it.s) + '</div>' : '') +
+      '</div>' +
+      '<div class="dd-req-row__price">' + price + '</div>' +
+      '<button type="button" class="dd-req-row__btn" data-request-frag="' + esc(it.id) + '">Request</button>' +
+    '</div>';
+  }
+
+  // Group the results under their brand — "brand then fragrance".
+  function groupHTML(items) {
+    var groups = {}, order = [];
+    items.forEach(function (it) {
+      if (!groups[it.b]) { groups[it.b] = []; order.push(it.b); }
+      groups[it.b].push(it);
+    });
+    return order.map(function (b) {
+      return '<div class="dd-req-group">' +
+        '<div class="dd-req-group__brand">' + esc(b) + ' <span>' + groups[b].length + '</span></div>' +
+        groups[b].map(rowHTML).join("") +
+      '</div>';
+    }).join("");
+  }
+
+  // Shared renderer for both the inline section and the popup.
+  function renderResults(wrap, meta, q) {
     if (!wrap) return;
     q = String(q || "").trim();
     if (!q) {
       wrap.innerHTML = "";
-      if (meta) meta.textContent = catalogue ? (catalogue.length.toLocaleString() + " fragrances in the library") : "";
+      if (meta) meta.textContent = catalogue ? (catalogue.length.toLocaleString() + " fragrances — search by brand or name") : "";
       return;
     }
     if (!catalogue) return; // still loading; loadCatalogue re-renders on arrival
@@ -289,17 +330,24 @@
     if (meta) meta.textContent = res.total
       ? ("Showing " + res.items.length + " of " + res.total.toLocaleString() + " match" + (res.total === 1 ? "" : "es"))
       : "No matches — try another spelling.";
-    wrap.innerHTML = res.items.map(function (it) {
-      var price = it.p != null ? ("$" + it.p) : "";
-      return '<div class="dd-req-row">' +
-        '<div class="dd-req-row__main">' +
-          '<div class="dd-req-row__name">' + esc(it.n) + '</div>' +
-          '<div class="dd-req-row__brand">' + esc(it.b) + (it.s ? " · " + esc(it.s) : "") + '</div>' +
-        '</div>' +
-        '<div class="dd-req-row__price">' + price + '</div>' +
-        '<button type="button" class="dd-req-row__btn" data-request-frag="' + esc(it.id) + '">Request</button>' +
-      '</div>';
-    }).join("");
+    wrap.innerHTML = groupHTML(res.items);
+  }
+  function renderRequestResults(q) { renderResults($("[data-request-results]"), $("[data-request-meta]"), q); }
+  function renderPopupResults(q) { renderResults($("[data-search-pop-results]"), $("[data-search-pop-meta]"), q); }
+
+  /* the timed / library search popup (leaves the inline section in place) */
+  function openSearch() {
+    searchOpen = true;
+    $("[data-search-modal]").hidden = false;
+    updateScrollLock();
+    loadCatalogue();
+    var input = $("[data-search-pop-input]");
+    if (input) { renderPopupResults(input.value); input.focus(); }
+  }
+  function closeSearch() {
+    searchOpen = false;
+    $("[data-search-modal]").hidden = true;
+    updateScrollLock();
   }
 
   function openRequest(id) {
@@ -307,7 +355,7 @@
     if (!it) return;
     requestFrag = it;
     $("[data-request-modal]").hidden = false;
-    document.body.style.overflow = "hidden";
+    updateScrollLock();
     renderRequestForm();
     var el = $('[data-req-field="name"]');
     if (el) el.focus();
@@ -315,7 +363,7 @@
   function closeRequest() {
     requestFrag = null;
     $("[data-request-modal]").hidden = true;
-    document.body.style.overflow = "";
+    updateScrollLock();
   }
   function renderRequestForm() {
     var it = requestFrag;
@@ -739,7 +787,7 @@
       var t = e.target.closest("[data-inc],[data-dec],[data-sample],[data-go],[data-remove-box]," +
         "[data-open-drawer],[data-close-drawer],[data-add-samplebox],[data-go-checkout]," +
         "[data-back-to-shop],[data-place-order],[data-continue-shopping],[data-close-product]," +
-        "[data-request-frag],[data-close-request],[data-submit-request]");
+        "[data-request-frag],[data-close-request],[data-submit-request],[data-close-search],[data-open-search]");
       if (t) {
         if (t.hasAttribute("data-inc")) return inc(t.getAttribute("data-inc"));
         if (t.hasAttribute("data-dec")) return dec(t.getAttribute("data-dec"));
@@ -757,6 +805,8 @@
         if (t.hasAttribute("data-request-frag")) return openRequest(t.getAttribute("data-request-frag"));
         if (t.hasAttribute("data-close-request")) return closeRequest();
         if (t.hasAttribute("data-submit-request")) return submitRequest();
+        if (t.hasAttribute("data-open-search")) return openSearch();
+        if (t.hasAttribute("data-close-search")) return closeSearch();
         return;
       }
       // Non-control click on a card opens its detail modal.
@@ -764,15 +814,25 @@
       if (card) return openProduct(card.getAttribute("data-open-product"));
     });
 
-    // Request-library search: lazy-load the catalogue, then filter as they type.
+    // Request-library search (inline): lazy-load the catalogue, filter as they type.
     var reqSearch = $("[data-request-search]");
     if (reqSearch) {
-      reqSearch.addEventListener("focus", loadCatalogue);
+      reqSearch.addEventListener("focus", function () { loadCatalogue(); });
       reqSearch.addEventListener("input", function () {
         loadCatalogue();
         if (reqSearchTimer) clearTimeout(reqSearchTimer);
         var v = reqSearch.value;
         reqSearchTimer = setTimeout(function () { renderRequestResults(v); }, 120);
+      });
+    }
+    // Same search inside the timed popup.
+    var popSearch = $("[data-search-pop-input]");
+    if (popSearch) {
+      popSearch.addEventListener("input", function () {
+        loadCatalogue();
+        if (popSearchTimer) clearTimeout(popSearchTimer);
+        var v = popSearch.value;
+        popSearchTimer = setTimeout(function () { renderPopupResults(v); }, 120);
       });
     }
 
@@ -793,6 +853,7 @@
     document.addEventListener("keydown", function (e) {
       if (e.key !== "Escape") return;
       if (requestFrag) return closeRequest();
+      if (searchOpen) return closeSearch();
       if (state.productId) return closeProduct();
       if (state.drawerOpen) return closeDrawer();
     });
@@ -803,4 +864,17 @@
   updateHeader();
   wire();
   handleReturn(); // resume confirmation / cancellation after a Stripe redirect
+
+  // Invite visitors to search the library — once per session, after 10s, and
+  // only if they're still browsing and nothing else is open. The inline
+  // Request section stays put regardless.
+  try {
+    if (!sessionStorage.getItem("mo_search_shown")) {
+      setTimeout(function () {
+        if (searchOpen || requestFrag || state.productId || state.drawerOpen || state.view !== "shop") return;
+        try { sessionStorage.setItem("mo_search_shown", "1"); } catch (e) { /* ignore */ }
+        openSearch();
+      }, 10000);
+    }
+  } catch (e) { /* sessionStorage blocked — simply skip the auto-popup */ }
 })();
