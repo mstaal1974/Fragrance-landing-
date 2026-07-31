@@ -238,8 +238,8 @@ body {
 .dd-card__swatch { position: absolute; inset: 0; }
 .dd-card__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .dd-card__body { padding: 18px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
-.dd-card__insp { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
-.dd-card__name { font-family: var(--serif); font-size: 23px; line-height: 1.1; color: var(--cream-hi); margin-top: -2px; }
+.dd-card__insp { font-family: var(--mono); font-size: 11.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin-bottom: 3px; }
+.dd-card__name { font-family: var(--serif); font-size: 23px; line-height: 1.1; color: var(--cream-hi); margin-top: 0; }
 .dd-card__desc { margin: 0; font-size: 12px; line-height: 1.55; color: rgba(243,236,220,0.55); min-height: 37px; }
 .dd-card__notes { margin: 0; font-family: var(--mono); font-size: 9px; letter-spacing: 0.04em; color: rgba(243,236,220,0.4); text-transform: uppercase; }
 .dd-card__foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 10px; }
@@ -436,7 +436,7 @@ body {
 .dd-modal__img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 26px; }
 
 .dd-modal__content { padding: 44px 38px 36px; }
-.dd-modal__insp { font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--gold); }
+.dd-modal__insp { font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
 .dd-modal__name { margin: 10px 0 0; font-family: var(--serif); font-weight: 300; font-size: 36px; line-height: 1.04; color: var(--cream); }
 .dd-modal__family {
   display: inline-block; margin-top: 12px; padding: 4px 11px; border: 1px solid var(--line);
