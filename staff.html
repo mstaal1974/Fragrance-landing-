@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0b0b0d">
+<title>Staff Order Desk · Maison Obsidian</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDIwIDI0Ij48cmVjdCB3aWR0aD0iMjAiIGhlaWdodD0iMjQiIHJ4PSIzIiBmaWxsPSIjMTIxMDBlIi8+PHBhdGggZD0iTTggNGg0TTguNiA0djYuMkwzLjIgMTguNEEyIDIgMCAwIDAgNSAyMS40aDEwYTIgMiAwIDAgMCAxLjgtM0wxMS40IDEwLjJWNCIgc3Ryb2tlPSIjYzlhOTYxIiBzdHJva2Utd2lkdGg9IjEuMiIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIgZmlsbD0ibm9uZSIvPjxwYXRoIGQ9Ik02LjIgMTVoNy42IiBzdHJva2U9IiNjOWE5NjEiIHN0cm9rZS13aWR0aD0iMS4yIi8+PC9zdmc+">
+<style>
+  :root{
+    --bg:#0b0b0d; --panel:#101015; --panel-2:#15151b; --line:#22222b;
+    --gold:#c9a961; --gold-hi:#d8bd7c; --cream:#f3ecdc; --cream-dim:rgba(243,236,220,.55);
+    --green:#4caf7d; --mono:'Space Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{
+    background:var(--bg); color:var(--cream); font-family:var(--sans);
+    padding-bottom:calc(150px + env(safe-area-inset-bottom));
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font-family:inherit}
+  .mono{font-family:var(--mono)}
+
+  /* ---------- PIN gate ---------- */
+  #gate{position:fixed;inset:0;z-index:50;background:var(--bg);display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:18px;padding:32px;text-align:center}
+  #gate h1{font-family:var(--mono);font-size:13px;letter-spacing:.28em;text-transform:uppercase;color:var(--gold);margin:0}
+  #gate p{color:var(--cream-dim);font-size:13px;max-width:280px;margin:0}
+  #pin{background:var(--panel);border:1px solid var(--line);color:var(--cream);font-family:var(--mono);
+    font-size:24px;letter-spacing:.5em;text-align:center;padding:16px 20px;width:200px;border-radius:12px;outline:none}
+  #pin:focus{border-color:rgba(201,169,97,.55)}
+  #gateErr{color:#e0796b;font-size:12px;min-height:14px}
+
+  /* ---------- header ---------- */
+  header{position:sticky;top:0;z-index:20;background:rgba(11,11,13,.92);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);padding:calc(12px + env(safe-area-inset-top)) 16px 12px}
+  .head-row{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:640px;margin:0 auto}
+  .brand{display:flex;align-items:center;gap:9px}
+  .brand svg{flex:0 0 auto}
+  .brand b{font-size:14px;letter-spacing:.02em;font-weight:600}
+  .brand span{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+  .lock{background:none;border:1px solid var(--line);color:var(--cream-dim);border-radius:9px;
+    font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:8px 12px;cursor:pointer}
+
+  main{max-width:640px;margin:0 auto;padding:14px 12px 0}
+
+  .search{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--cream);
+    font-size:16px;padding:13px 15px;border-radius:12px;outline:none;margin-bottom:12px}
+  .search:focus{border-color:rgba(201,169,97,.45)}
+
+  /* ---------- product row ---------- */
+  .list{display:flex;flex-direction:column;gap:8px}
+  .item{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);
+    border-radius:14px;padding:11px 12px;transition:border-color .15s}
+  .item.has{border-color:rgba(201,169,97,.5)}
+  .swatch{width:38px;height:38px;border-radius:9px;flex:0 0 auto;border:1px solid rgba(255,255,255,.06)}
+  .item .info{flex:1;min-width:0}
+  .item .insp{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold-hi);
+    font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item .nm{font-size:15px;line-height:1.2;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stepper{display:flex;align-items:center;gap:2px;flex:0 0 auto}
+  .stepper button{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--panel-2);
+    color:var(--cream);font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .stepper button:active{transform:scale(.92)}
+  .stepper .qty{min-width:26px;text-align:center;font-family:var(--mono);font-size:15px;color:var(--gold-hi)}
+  .add{border:1px solid var(--gold)!important;color:var(--gold)!important;background:rgba(201,169,97,.1)!important;
+    width:auto!important;padding:0 16px;font-size:11px!important;letter-spacing:.14em;text-transform:uppercase;height:34px}
+
+  .muted{color:var(--cream-dim);font-size:12px;text-align:center;padding:20px}
+
+  /* ---------- bottom summary ---------- */
+  .foot{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(16,16,21,.97);backdrop-filter:blur(12px);
+    border-top:1px solid var(--line);padding:12px 12px calc(12px + env(safe-area-inset-bottom))}
+  .foot-inner{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:12px}
+  .totals{flex:1;min-width:0}
+  .totals .cnt{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--cream-dim)}
+  .totals .amt{font-family:var(--mono);font-size:22px;color:var(--gold-hi);line-height:1.1}
+  .cta{flex:0 0 auto;background:var(--gold);color:#0b0b0d;border:0;font-weight:700;font-size:14px;
+    letter-spacing:.04em;padding:15px 22px;border-radius:12px;cursor:pointer}
+  .cta:disabled{opacity:.4;cursor:not-allowed}
+  .cta:active:not(:disabled){transform:scale(.98)}
+
+  /* ---------- checkout sheet ---------- */
+  .sheet-scrim{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.6);display:none}
+  .sheet-scrim.open{display:block}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--panel);border-top:1px solid var(--line);
+    border-radius:20px 20px 0 0;max-height:92vh;overflow-y:auto;transform:translateY(100%);transition:transform .25s ease;
+    padding:8px 16px calc(28px + env(safe-area-inset-bottom))}
+  .sheet.open{transform:translateY(0)}
+  .grabber{width:40px;height:4px;border-radius:2px;background:var(--line);margin:8px auto 14px}
+  .sheet h2{font-size:16px;margin:0 0 4px;font-weight:600}
+  .sheet .sub{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
+  label.fld{display:block;margin-bottom:12px}
+  label.fld .lab{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--cream-dim);margin-bottom:5px;display:block}
+  .in{width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--cream);font-size:16px;
+    padding:12px 14px;border-radius:11px;outline:none}
+  .in:focus{border-color:rgba(201,169,97,.45)}
+  .seg{display:flex;gap:8px;margin-bottom:14px}
+  .seg button{flex:1;background:var(--panel-2);border:1px solid var(--line);color:var(--cream-dim);
+    padding:12px;border-radius:11px;font-size:13px;cursor:pointer}
+  .seg button.on{border-color:var(--gold);color:var(--gold);background:rgba(201,169,97,.1)}
+  .ship-fields{display:none}
+  .ship-fields.show{display:block}
+  .row2{display:flex;gap:10px}
+  .row2>*{flex:1}
+  .err{color:#e0796b;font-size:12px;min-height:15px;margin:2px 0 8px}
+  .pay-btn{width:100%;background:var(--gold);color:#0b0b0d;border:0;font-weight:700;font-size:15px;
+    padding:16px;border-radius:12px;cursor:pointer;margin-top:6px}
+  .pay-btn:disabled{opacity:.5}
+
+  /* ---------- pay result ---------- */
+  .paywrap{text-align:center;padding:8px 0}
+  #qr{width:230px;height:230px;margin:8px auto 14px;background:#fff;border-radius:14px;padding:12px;display:flex;align-items:center;justify-content:center}
+  #qr img,#qr canvas{width:100%!important;height:100%!important}
+  .paylink{display:inline-flex;align-items:center;gap:8px;background:var(--panel-2);border:1px solid var(--line);
+    color:var(--gold);border-radius:11px;padding:14px 18px;font-size:14px;text-decoration:none;width:100%;justify-content:center;margin-bottom:10px}
+  .ghost{background:none;border:1px solid var(--line);color:var(--cream-dim);border-radius:11px;padding:13px;
+    font-size:13px;letter-spacing:.06em;cursor:pointer;width:100%}
+  .hint{color:var(--cream-dim);font-size:12.5px;line-height:1.5;max-width:300px;margin:0 auto 16px}
+  .amt-big{font-family:var(--mono);font-size:26px;color:var(--gold-hi);margin:2px 0 14px}
+</style>
+</head>
+<body>
+
+  <!-- PIN GATE -->
+  <div id="gate">
+    <div class="brand" style="justify-content:center">
+      <svg width="22" height="26" viewBox="0 0 20 24" fill="none" aria-hidden="true"><path d="M8 2h4M8.6 2v6.2L3.2 18.4A2 2 0 0 0 5 21.4h10a2 2 0 0 0 1.8-3L11.4 8.2V2" stroke="#c9a961" stroke-width="1.2" stroke-linejoin="round"/><path d="M6.2 14.5h7.6" stroke="#c9a961" stroke-width="1.2"/></svg>
+    </div>
+    <h1>Staff Order Desk</h1>
+    <p>Enter the staff passcode to take an order.</p>
+    <input id="pin" type="tel" inputmode="numeric" autocomplete="off" placeholder="••••" maxlength="8" aria-label="Staff passcode">
+    <div id="gateErr"></div>
+  </div>
+
+  <!-- APP -->
+  <header>
+    <div class="head-row">
+      <div class="brand">
+        <svg width="20" height="24" viewBox="0 0 20 24" fill="none" aria-hidden="true"><path d="M8 2h4M8.6 2v6.2L3.2 18.4A2 2 0 0 0 5 21.4h10a2 2 0 0 0 1.8-3L11.4 8.2V2" stroke="#c9a961" stroke-width="1.2" stroke-linejoin="round"/><path d="M6.2 14.5h7.6" stroke="#c9a961" stroke-width="1.2"/></svg>
+        <div><b>Maison Obsidian</b><span>Staff Order Desk</span></div>
+      </div>
+      <button class="lock" id="lockBtn">Lock</button>
+    </div>
+  </header>
+
+  <main>
+    <input class="search" id="search" type="search" placeholder="Search scent or inspired-by…" autocomplete="off">
+    <div class="list" id="list"></div>
+    <div class="muted" id="empty" hidden>No scents match that search.</div>
+  </main>
+
+  <!-- BOTTOM BAR -->
+  <div class="foot">
+    <div class="foot-inner">
+      <div class="totals">
+        <div class="cnt" id="count">0 bottles</div>
+        <div class="amt" id="total">$0</div>
+      </div>
+      <button class="cta" id="reviewBtn" disabled>Take Payment</button>
+    </div>
+  </div>
+
+  <!-- CHECKOUT SHEET -->
+  <div class="sheet-scrim" id="scrim"></div>
+  <div class="sheet" id="sheet">
+    <div class="grabber"></div>
+
+    <!-- step 1: details -->
+    <div id="stepForm">
+      <h2>Order details</h2>
+      <div class="sub" id="orderLine">—</div>
+
+      <div class="seg">
+        <button data-mode="pickup" class="on">In person / pickup</button>
+        <button data-mode="ship">Ship it</button>
+      </div>
+
+      <label class="fld"><span class="lab">Customer name (optional)</span>
+        <input class="in" id="fName" autocomplete="off"></label>
+      <label class="fld"><span class="lab">Email for receipt (optional)</span>
+        <input class="in" id="fEmail" type="email" inputmode="email" autocomplete="off"></label>
+
+      <div class="ship-fields" id="shipFields">
+        <label class="fld"><span class="lab">Address</span>
+          <input class="in" id="fAddr" autocomplete="off"></label>
+        <div class="row2">
+          <label class="fld"><span class="lab">Suburb</span>
+            <input class="in" id="fCity" autocomplete="off"></label>
+          <label class="fld"><span class="lab">Postcode</span>
+            <input class="in" id="fZip" inputmode="numeric" maxlength="4" autocomplete="off"></label>
+        </div>
+        <label class="fld"><span class="lab">State</span>
+          <input class="in" id="fRegion" autocomplete="off" placeholder="e.g. VIC"></label>
+      </div>
+
+      <div class="err" id="formErr"></div>
+      <button class="pay-btn" id="createBtn">Create payment →</button>
+    </div>
+
+    <!-- step 2: pay -->
+    <div id="stepPay" style="display:none">
+      <div class="paywrap">
+        <h2>Ready to pay</h2>
+        <div class="amt-big" id="payAmt">$0</div>
+        <p class="hint">Ask the customer to <b>scan this code</b> and tap to pay with Apple&nbsp;Pay, Google&nbsp;Pay, or their card. Or open it on this device and hand it over.</p>
+        <div id="qr"></div>
+        <a class="paylink" id="payLink" href="#" target="_blank" rel="noopener">Open payment page ↗</a>
+        <button class="ghost" id="copyBtn" style="margin-bottom:10px">Copy payment link</button>
+        <button class="ghost" id="newBtn">Start new order</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="data.js?v=20260728"></script>
+  <script>
+  (function(){
+    "use strict";
+
+    /* ================================================================
+     * Staff passcode. This is a light gate for convenience only — the
+     * page exposes no admin data and every price is recomputed on the
+     * server (/api/checkout), so a wrong hand can set no price. Change
+     * this value to rotate the passcode. For a stronger gate, move auth
+     * to the server later.
+     * ================================================================ */
+    var STAFF_PIN = "4827";
+
+    var PRICE = 12, BOX_PRICE = 50; // dollars, display only — server is source of truth
+    var FRAGS = (window.FRAGS || []).slice();
+    var cart = {};            // id -> qty
+    var $ = function(s){return document.querySelector(s)};
+    var mode = "pickup";
+    var lastUrl = "";
+
+    /* ---------- PIN gate ---------- */
+    var GATE_KEY = "mo_staff_ok";
+    function unlocked(){ try{return sessionStorage.getItem(GATE_KEY)==="1"}catch(e){return false} }
+    function openGate(){ $("#gate").style.display="flex"; setTimeout(function(){$("#pin").focus()},60); }
+    function closeGate(){ $("#gate").style.display="none"; }
+    if(unlocked()) closeGate();
+    $("#pin").addEventListener("input", function(e){
+      var v = e.target.value.replace(/\D/g,""); e.target.value=v;
+      $("#gateErr").textContent="";
+      if(v.length>=STAFF_PIN.length){
+        if(v===STAFF_PIN){ try{sessionStorage.setItem(GATE_KEY,"1")}catch(_){} closeGate(); }
+        else { $("#gateErr").textContent="Incorrect passcode."; e.target.value=""; }
+      }
+    });
+    $("#lockBtn").addEventListener("click", function(){
+      try{sessionStorage.removeItem(GATE_KEY)}catch(_){}
+      $("#pin").value=""; openGate();
+    });
+
+    /* ---------- catalogue render ---------- */
+    function frag(id){ for(var i=0;i<FRAGS.length;i++) if(FRAGS[i].id===id) return FRAGS[i]; return null; }
+    function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]}); }
+
+    function renderList(filter){
+      filter = (filter||"").trim().toLowerCase();
+      var list = $("#list"); list.innerHTML="";
+      var shown = 0;
+      FRAGS.forEach(function(f){
+        if(filter && (f.name+" "+f.insp).toLowerCase().indexOf(filter)<0) return;
+        shown++;
+        var qty = cart[f.id]||0;
+        var el = document.createElement("div");
+        el.className = "item"+(qty?" has":"");
+        el.innerHTML =
+          '<div class="swatch" style="background:radial-gradient(circle at 32% 28%, '+esc(f.liquid)+' 0%, #0c0c0e 92%)"></div>'+
+          '<div class="info"><div class="insp">'+esc(f.insp)+'</div><div class="nm">'+esc(f.name)+'</div></div>'+
+          (qty
+            ? '<div class="stepper"><button data-dec="'+f.id+'" aria-label="Remove one">–</button>'+
+              '<span class="qty">'+qty+'</span>'+
+              '<button data-inc="'+f.id+'" aria-label="Add one">+</button></div>'
+            : '<button class="add" data-inc="'+f.id+'">Add</button>');
+        list.appendChild(el);
+      });
+      $("#empty").hidden = shown>0;
+    }
+
+    document.addEventListener("click", function(e){
+      var inc = e.target.getAttribute && e.target.getAttribute("data-inc");
+      var dec = e.target.getAttribute && e.target.getAttribute("data-dec");
+      if(inc){ cart[inc]=(cart[inc]||0)+1; afterCartChange(); }
+      else if(dec){ cart[dec]=Math.max(0,(cart[dec]||0)-1); if(!cart[dec]) delete cart[dec]; afterCartChange(); }
+    });
+
+    function afterCartChange(){ renderList($("#search").value); updateTotals(); }
+
+    function cartCount(){ var n=0; for(var k in cart) n+=cart[k]; return n; }
+    function updateTotals(){
+      var n = cartCount();
+      $("#count").textContent = n+" bottle"+(n===1?"":"s");
+      $("#total").textContent = "$"+(n*PRICE);
+      $("#reviewBtn").disabled = n===0;
+    }
+
+    $("#search").addEventListener("input", function(){ renderList(this.value); });
+
+    /* ---------- checkout sheet ---------- */
+    function openSheet(){
+      var items=[]; for(var id in cart){ items.push(cart[id]+"× "+frag(id).name); }
+      $("#orderLine").textContent = items.join("  ·  ");
+      $("#stepForm").style.display="block";
+      $("#stepPay").style.display="none";
+      $("#formErr").textContent="";
+      $("#scrim").classList.add("open"); $("#sheet").classList.add("open");
+    }
+    function closeSheet(){ $("#scrim").classList.remove("open"); $("#sheet").classList.remove("open"); }
+    $("#reviewBtn").addEventListener("click", openSheet);
+    $("#scrim").addEventListener("click", closeSheet);
+
+    // fulfilment mode toggle
+    document.querySelectorAll(".seg button").forEach(function(b){
+      b.addEventListener("click", function(){
+        document.querySelectorAll(".seg button").forEach(function(x){x.classList.remove("on")});
+        b.classList.add("on"); mode=b.getAttribute("data-mode");
+        $("#shipFields").classList.toggle("show", mode==="ship");
+      });
+    });
+
+    // parcel estimate (mirrors the main site) for AusPost postage when shipping
+    function parcel(){
+      var bottles = cartCount();
+      var perRow = Math.min(bottles,5), rows = Math.ceil(bottles/5);
+      var widthMm = (perRow*20)||20, heightMm=(rows*20)||20, weightG=bottles*35;
+      return { length:10, width:widthMm/10, height:heightMm/10, weight:Math.max(0.02, Math.round(weightG)/1000) };
+    }
+
+    function buildPayload(){
+      var ship = mode==="ship";
+      var p = {
+        email: $("#fEmail").value.trim(),
+        ship_name: $("#fName").value.trim(),
+        delivery_method: ship ? "ship" : "alternate",
+        bottles: Object.keys(cart).map(function(id){ return { name:frag(id).name, qty:cart[id] }; }),
+        boxes: []
+      };
+      if(ship){
+        p.to_postcode = $("#fZip").value.trim();
+        p.ship_address = $("#fAddr").value.trim();
+        p.ship_city = $("#fCity").value.trim();
+        p.ship_region = $("#fRegion").value.trim();
+        p.parcel = parcel();
+      } else {
+        p.delivery_notes = "In-person / pickup order taken at the staff desk.";
+      }
+      return p;
+    }
+
+    $("#createBtn").addEventListener("click", function(){
+      var btn=this;
+      $("#formErr").textContent="";
+      if(mode==="ship"){
+        if(!$("#fAddr").value.trim() || !$("#fCity").value.trim() || !/^\d{4}$/.test($("#fZip").value.trim())){
+          $("#formErr").textContent="Enter address, suburb and a 4-digit postcode to ship."; return;
+        }
+      }
+      btn.disabled=true; var lbl=btn.textContent; btn.textContent="Creating…";
+      fetch("/api/checkout", {
+        method:"POST",
+        headers:{"Content-Type":"application/json",Accept:"application/json"},
+        body:JSON.stringify(buildPayload())
+      })
+      .then(function(r){ return r.json().then(function(d){return{ok:r.ok,d:d}}); })
+      .then(function(res){
+        if(res.ok && res.d && res.d.ok && res.d.url){ showPay(res.d.url); }
+        else { throw new Error((res.d&&res.d.error)||"Could not create payment."); }
+      })
+      .catch(function(err){
+        btn.disabled=false; btn.textContent=lbl;
+        $("#formErr").textContent=err.message||"Could not create payment.";
+      });
+    });
+
+    /* ---------- pay step ---------- */
+    function showPay(url){
+      lastUrl = url;
+      var n=cartCount();
+      $("#payAmt").textContent = "$"+(n*PRICE)+(mode==="ship"?" + post":"");
+      $("#payLink").href = url;
+      $("#createBtn").disabled=false; $("#createBtn").textContent="Create payment →";
+      $("#stepForm").style.display="none"; $("#stepPay").style.display="block";
+      makeQR(url);
+    }
+
+    // QR: use qrcodejs from CDN; if it fails to load, the link/copy still work.
+    function makeQR(url){
+      var box=$("#qr"); box.innerHTML="";
+      function draw(){
+        try{ new QRCode(box,{text:url,width:206,height:206,correctLevel:QRCode.CorrectLevel.M}); }
+        catch(e){ box.innerHTML='<span style="color:#0b0b0d;font-size:12px;padding:10px">Use the button below to open the payment page.</span>'; }
+      }
+      if(window.QRCode){ draw(); return; }
+      var s=document.createElement("script");
+      s.src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs/qrcode.min.js";
+      s.onload=draw;
+      s.onerror=function(){ box.innerHTML='<span style="color:#0b0b0d;font-size:12px;padding:10px">Use the button below to open the payment page.</span>'; };
+      document.head.appendChild(s);
+    }
+
+    $("#copyBtn").addEventListener("click", function(){
+      var b=this;
+      function done(){ b.textContent="Copied ✓"; setTimeout(function(){b.textContent="Copy payment link"},1400); }
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(lastUrl).then(done, done); }
+      else { window.prompt("Copy the payment link:", lastUrl); }
+    });
+
+    $("#newBtn").addEventListener("click", function(){
+      cart={}; mode="pickup";
+      document.querySelectorAll(".seg button").forEach(function(x){x.classList.remove("on")});
+      document.querySelector('.seg button[data-mode="pickup"]').classList.add("on");
+      $("#shipFields").classList.remove("show");
+      ["fName","fEmail","fAddr","fCity","fZip","fRegion"].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=""; });
+      $("#search").value="";
+      afterCartChange(); closeSheet();
+    });
+
+    /* ---------- boot ---------- */
+    if(!FRAGS.length){ $("#list").innerHTML='<div class="muted">Catalogue failed to load. Refresh the page.</div>'; }
+    renderList(""); updateTotals();
+    if(!unlocked()) openGate();
+  })();
+  </script>
+</body>
+</html>
