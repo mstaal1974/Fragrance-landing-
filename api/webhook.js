@@ -22,6 +22,7 @@
 
 var crypto = require("crypto");
 var supabase = require("./_supabase");
+var order = require("./_order");
 
 var TOLERANCE_SECONDS = 300; // reject events older than 5 min (replay guard)
 
@@ -84,31 +85,13 @@ function verifySignature(rawBody, header, secret) {
  * upsert makes that retry safe.
  */
 async function fulfilOrder(session) {
-  var d = session.customer_details || {};
-  var m = session.metadata || {};
-  var order = {
-    stripe_session_id: session.id,
-    payment_intent_id: typeof session.payment_intent === "string" ? session.payment_intent : null,
-    email: d.email || session.customer_email || null,
-    name: d.name || m.ship_name || null,
-    amount_total: typeof session.amount_total === "number" ? session.amount_total : null,
-    currency: session.currency || null,
-    items: m.items || null,
-    ship_address: m.ship_address || null,
-    ship_city: m.ship_city || null,
-    ship_region: m.ship_region || null,
-    ship_postcode: m.ship_postcode || null,
-    delivery_method: m.delivery_method || null,
-    delivery_notes: m.delivery_notes || null,
-    mobile: m.mobile || null,
-    status: "paid",
-  };
+  var row = order.fromSession(session);
 
   if (supabase.isConfigured()) {
-    await supabase.saveOrder(order); // idempotent upsert on stripe_session_id
+    await supabase.saveOrder(row); // idempotent upsert on stripe_session_id
     console.log("[order paid] saved to Supabase: " + session.id);
   } else {
-    console.log("[order paid] (Supabase not configured) " + JSON.stringify(order));
+    console.log("[order paid] (Supabase not configured) " + JSON.stringify(row));
   }
 }
 
