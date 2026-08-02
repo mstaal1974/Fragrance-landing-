@@ -119,8 +119,21 @@
     color:var(--gold);border-radius:11px;padding:14px 18px;font-size:14px;text-decoration:none;width:100%;justify-content:center;margin-bottom:10px}
   .ghost{background:none;border:1px solid var(--line);color:var(--cream-dim);border-radius:11px;padding:13px;
     font-size:13px;letter-spacing:.06em;cursor:pointer;width:100%}
-  .hint{color:var(--cream-dim);font-size:12.5px;line-height:1.5;max-width:300px;margin:0 auto 16px}
-  .amt-big{font-family:var(--mono);font-size:26px;color:var(--gold-hi);margin:2px 0 14px}
+  .hint{color:var(--cream-dim);font-size:12.5px;line-height:1.5;max-width:320px;margin:0 auto 16px}
+  .tiny{color:var(--cream-dim);font-size:11px;line-height:1.45;margin:10px 0 0}
+  .amt-big{font-family:var(--mono);font-size:26px;color:var(--gold-hi);margin:2px 0 16px}
+
+  .pay-card{background:var(--panel-2);border:1px solid rgba(201,169,97,.35);border-radius:16px;padding:16px 16px 18px;text-align:center}
+  .pay-card__head{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-hi);font-weight:700;margin-bottom:8px}
+  .charge{display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .charge__lab{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--cream-dim)}
+  .charge__amt{flex:1;text-align:left;font-family:var(--mono);font-size:24px;color:var(--gold-hi)}
+  .charge__copy{background:none;border:1px solid var(--line);color:var(--cream-dim);border-radius:9px;padding:8px 14px;font-size:12px;cursor:pointer}
+  .charge__copy:active{transform:scale(.94)}
+
+  .divider{display:flex;align-items:center;gap:12px;margin:20px 0 16px;color:var(--cream-dim)}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+  .divider span{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase}
 </style>
 </head>
 <body>
@@ -206,10 +219,27 @@
       <div class="paywrap">
         <h2>Ready to pay</h2>
         <div class="amt-big" id="payAmt">$0</div>
-        <p class="hint">Ask the customer to <b>scan this code</b> and tap to pay with Apple&nbsp;Pay, Google&nbsp;Pay, or their card. Or open it on this device and hand it over.</p>
+
+        <!-- Bridge: Tap to Pay on this phone via the Stripe app -->
+        <div class="pay-card">
+          <div class="pay-card__head">Tap to Pay on this phone</div>
+          <p class="hint" style="margin-bottom:12px">Open the Stripe app → <b>New payment</b> → <b>Tap to Pay</b>, enter the amount below, then have the customer tap their card or phone.</p>
+          <div class="charge">
+            <span class="charge__lab">Charge</span>
+            <span class="charge__amt" id="chargeAmt">A$0.00</span>
+            <button class="charge__copy" id="copyAmtBtn">Copy</button>
+          </div>
+          <button class="pay-btn" id="openStripeBtn" style="margin-top:12px">Open Stripe app →</button>
+          <p class="tiny" id="shipNote" hidden>Amount is for the bottles only — postage isn't included in a Tap to Pay charge.</p>
+        </div>
+
+        <div class="divider"><span>or let the customer pay on their phone</span></div>
+
+        <!-- Wallet: customer scans and pays on their own device -->
         <div id="qr"></div>
         <a class="paylink" id="payLink" href="#" target="_blank" rel="noopener">Open payment page ↗</a>
-        <button class="ghost" id="copyBtn" style="margin-bottom:10px">Copy payment link</button>
+        <button class="ghost" id="copyBtn" style="margin-bottom:16px">Copy payment link</button>
+
         <button class="ghost" id="newBtn">Start new order</button>
       </div>
     </div>
@@ -384,12 +414,42 @@
     function showPay(url){
       lastUrl = url;
       var n=cartCount();
+      var goods=(n*PRICE).toFixed(2);          // dollars for the bottles, e.g. "60.00"
       $("#payAmt").textContent = "$"+(n*PRICE)+(mode==="ship"?" + post":"");
+      $("#chargeAmt").textContent = "A$"+goods;
+      $("#copyAmtBtn").setAttribute("data-amt", goods);
+      $("#shipNote").hidden = mode!=="ship";
       $("#payLink").href = url;
       $("#createBtn").disabled=false; $("#createBtn").textContent="Create payment →";
       $("#stepForm").style.display="none"; $("#stepPay").style.display="block";
       makeQR(url);
     }
+
+    // Copy just the amount so staff can paste it into the Stripe app.
+    $("#copyAmtBtn").addEventListener("click", function(){
+      var b=this, amt=b.getAttribute("data-amt")||"";
+      function done(){ b.textContent="Copied ✓"; setTimeout(function(){b.textContent="Copy"},1400); }
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(amt).then(done,done); }
+      else { window.prompt("Amount to charge:", amt); }
+    });
+
+    // Best-effort launch of the official Stripe Dashboard app for Tap to Pay.
+    // Stripe exposes no deep link to a pre-filled payment, so this just opens
+    // the app (staff enter the amount shown above). Falls back to the app store.
+    $("#openStripeBtn").addEventListener("click", function(){
+      var ua=navigator.userAgent||"";
+      if(/Android/i.test(ua)){
+        // Android intent: open the Stripe Dashboard app, else Play Store.
+        window.location.href =
+          "intent://dashboard.stripe.com/#Intent;scheme=https;package=com.stripe.android.dashboard;"+
+          "S.browser_fallback_url="+encodeURIComponent("https://play.google.com/store/apps/details?id=com.stripe.android.dashboard")+";end";
+      } else if(/iPhone|iPad|iPod/i.test(ua)){
+        // iOS: the Stripe app claims dashboard.stripe.com universal links when installed.
+        window.location.href = "https://dashboard.stripe.com/payments";
+      } else {
+        window.open("https://dashboard.stripe.com/payments","_blank","noopener");
+      }
+    });
 
     // QR: use qrcodejs from CDN; if it fails to load, the link/copy still work.
     function makeQR(url){
