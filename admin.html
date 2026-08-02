@@ -261,9 +261,16 @@
     return (typeof r.amount_total === "number") ? ("$"+(r.amount_total/100).toFixed(2)+" "+String(r.currency||"").toUpperCase()) : "";
   }
 
-  // Items rendered as a tick-box picking checklist (our names + quantities;
-  // sample boxes expand to their 5 scents). No "inspired by" — staff pick by
-  // our product name.
+  // Small "· inspired by <designer scent>" tag for a fragrance, for the print
+  // sheet. Helps staff confirm the right bottle off the shelf.
+  function packInsp(name){
+    var ins = inspOf(name);
+    return ins ? " <span class='insp'>· inspired by "+esc(ins)+"</span>" : "";
+  }
+
+  // Items rendered as a tick-box picking checklist: our product name (+ the
+  // scent it's inspired by) and quantities; sample boxes expand to their 5
+  // scents.
   function packItemsList(str){
     str = String(str==null?"":str).trim();
     if(!str) return "<ul class='items'><li><span class='cb'></span>(no item detail)</li></ul>";
@@ -272,13 +279,13 @@
       var box = p.match(/^Sample Box\s*\((.+)\)\s*$/i);
       if(box){
         var scents = box[1].split(",").map(function(s){ return s.trim(); }).filter(Boolean)
-          .map(function(n){ return "<li><span class='cb'></span>"+esc(n)+"</li>"; }).join("");
+          .map(function(n){ return "<li><span class='cb'></span>"+esc(n)+packInsp(n)+"</li>"; }).join("");
         return "<li><span class='cb'></span><strong>Sample Box · 5 × 10ml</strong><ul class='sub'>"+scents+"</ul></li>";
       }
       if(/^Sample Box$/i.test(p)) return "<li><span class='cb'></span><strong>Sample Box · 5 × 10ml</strong></li>";
       var m = p.match(/^(\d+)\s*[×x]\s*(.+)$/);
-      if(m) return "<li><span class='cb'></span><strong>"+esc(m[1])+" ×</strong> "+esc(m[2])+"</li>";
-      return "<li><span class='cb'></span>"+esc(p)+"</li>";
+      if(m) return "<li><span class='cb'></span><strong>"+esc(m[1])+" ×</strong> "+esc(m[2])+packInsp(m[2])+"</li>";
+      return "<li><span class='cb'></span>"+esc(p)+packInsp(p)+"</li>";
     }).join("")+"</ul>";
   }
 
@@ -310,6 +317,7 @@
       ".label{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#777;margin-bottom:6px;}"+
       "ul.items{list-style:none;margin:0;padding:0;}ul.items li{font-size:14px;margin:6px 0;}"+
       "ul.sub{list-style:none;margin:5px 0 6px 34px;padding:0;}ul.sub li{font-size:13px;color:#333;margin:3px 0;}"+
+      ".insp{color:#666;font-style:italic;font-size:12px;}"+
       ".cb{width:13px;height:13px;border:1.5px solid #111;border-radius:2px;display:inline-block;vertical-align:middle;margin-right:9px;}"+
       "@media print{body{margin:0;}.order{border-color:#999;}}";
   }
