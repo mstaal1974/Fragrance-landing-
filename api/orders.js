@@ -10,6 +10,11 @@
  * Request:  GET /api/orders   with header  Authorization: Bearer <ADMIN_TOKEN>
  *           (or ?token=<ADMIN_TOKEN>)
  * Response: 200 { ok:true, orders:[...] }  |  401/5xx { ok:false, error }
+ *
+ * The admin can also toggle an order's fulfilment flag:
+ * Request:  PATCH /api/orders   { id:"<uuid>", packed:true|false }
+ *           (same Bearer <ADMIN_TOKEN> gate)
+ * Response: 200 { ok:true, order:{...} }  |  4xx/5xx { ok:false, error }
  */
 
 var crypto = require("crypto");
@@ -36,6 +41,36 @@ module.exports = async function handler(req, res) {
   }
 
   if (!supabase.isConfigured()) return res.status(500).json({ ok: false, error: "Supabase is not configured." });
+
+  // ---- PATCH: toggle a fulfilment flag (currently `packed`) ----
+  if (req.method === "PATCH" || req.method === "POST") {
+    var body = req.body;
+    if (typeof body === "string") { try { body = JSON.parse(body); } catch (e) { body = {}; } }
+    body = body || {};
+
+    var id = String(body.id || "").trim();
+    if (!id) return res.status(400).json({ ok: false, error: "Missing order id." });
+
+    var patch = {};
+    if (typeof body.packed === "boolean") patch.packed = body.packed;
+    if (!Object.keys(patch).length) return res.status(400).json({ ok: false, error: "Nothing to update." });
+
+    var updated;
+    try {
+      updated = await supabase.update("orders", id, patch);
+    } catch (e) {
+      return res.status(502).json({ ok: false, error: "Could not update the order." });
+    }
+    var order = Array.isArray(updated) ? updated[0] : updated;
+    if (!order) return res.status(404).json({ ok: false, error: "Order not found." });
+    return res.status(200).json({ ok: true, order: order });
+  }
+
+  // ---- GET: list orders ----
+  if (req.method !== "GET") {
+    res.setHeader("Allow", "GET, PATCH");
+    return res.status(405).json({ ok: false, error: "GET or PATCH only." });
+  }
 
   var rows;
   try {

@@ -20,6 +20,7 @@ create table if not exists public.orders (
   delivery_method    text,                           -- 'post' or 'alternate'
   delivery_notes     text,                           -- hand delivery / via a friend details
   mobile             text,                           -- contact mobile (alternate delivery)
+  packed             boolean not null default false,  -- staff fulfilment: packed?
   status             text not null default 'paid',
   created_at         timestamptz not null default now()
 );
@@ -29,6 +30,7 @@ create table if not exists public.orders (
 alter table public.orders add column if not exists delivery_method text;
 alter table public.orders add column if not exists delivery_notes text;
 alter table public.orders add column if not exists mobile text;
+alter table public.orders add column if not exists packed boolean not null default false;
 
 -- Lock the table down. The webhook writes with the service_role key, which
 -- bypasses Row Level Security, so it needs no policy. Enabling RLS with NO
