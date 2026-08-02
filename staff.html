@@ -179,9 +179,9 @@
         <button data-mode="ship">Ship it</button>
       </div>
 
-      <label class="fld"><span class="lab">Customer name (optional)</span>
+      <label class="fld"><span class="lab">Customer name</span>
         <input class="in" id="fName" autocomplete="off"></label>
-      <label class="fld"><span class="lab">Email for receipt (optional)</span>
+      <label class="fld"><span class="lab">Email for receipt</span>
         <input class="in" id="fEmail" type="email" inputmode="email" autocomplete="off"></label>
 
       <div class="ship-fields" id="shipFields">
@@ -355,6 +355,9 @@
     $("#createBtn").addEventListener("click", function(){
       var btn=this;
       $("#formErr").textContent="";
+      var name=$("#fName").value.trim(), email=$("#fEmail").value.trim();
+      if(!name){ $("#formErr").textContent="Enter the customer's name."; return; }
+      if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ $("#formErr").textContent="Enter a valid email for the receipt."; return; }
       if(mode==="ship"){
         if(!$("#fAddr").value.trim() || !$("#fCity").value.trim() || !/^\d{4}$/.test($("#fZip").value.trim())){
           $("#formErr").textContent="Enter address, suburb and a 4-digit postcode to ship."; return;
