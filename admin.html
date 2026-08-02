@@ -34,6 +34,19 @@
   .ref { font-family:var(--mono); font-size:10px; color:rgba(243,236,220,0.4); }
   a { color:var(--gold); }
   .scroll { overflow-x:auto; border:1px solid var(--line); }
+  /* Items — our name + the fragrance it's inspired by */
+  .item-line { margin:0 0 7px; }
+  .item-line:last-child { margin-bottom:0; }
+  .item-scent { padding-left:10px; margin-top:2px; }
+  .insp { font-family:var(--mono); font-size:10px; letter-spacing:0.06em; color:rgba(201,169,97,0.85); }
+  /* Shipping details */
+  .ship-name { color:var(--cream); }
+  /* Packed checkbox + fulfilled rows */
+  td.pack { text-align:center; white-space:nowrap; }
+  .pack-box { width:18px; height:18px; accent-color:var(--gold); cursor:pointer; }
+  .pack-box:disabled { opacity:0.5; cursor:progress; }
+  tr.packed td { opacity:0.5; }
+  tr.packed td.pack { opacity:1; }
 </style>
 </head>
 <body>
@@ -61,11 +74,17 @@
     </table></div>
   </div>
 
+<script src="data.js?v=20260802"></script>
 <script>
 (function(){
   var $ = function(id){ return document.getElementById(id); };
   var tab = "requests";
   var rowsData = [];
+
+  // Our fragrance name → the designer scent it's inspired by (from data.js).
+  var INSP = {};
+  (window.FRAGS || []).forEach(function(f){ if(f && f.name){ INSP[f.name.trim().toLowerCase()] = f.insp || ""; } });
+  function inspOf(name){ return INSP[String(name==null?"":name).trim().toLowerCase()] || ""; }
 
   var VIEWS = {
     requests: {
@@ -84,24 +103,17 @@
     },
     orders: {
       endpoint: "/api/orders", key: "orders", heading: "Paid Orders",
-      csv: ["created_at","amount_total","currency","items","name","email","mobile","delivery_method","delivery_notes","ship_address","ship_city","ship_region","ship_postcode","status","stripe_session_id","payment_intent_id"],
-      cols: ["When","Items","Amount","Customer","Email","Delivery","Status","Ref"],
+      csv: ["created_at","packed","amount_total","currency","items","name","email","mobile","delivery_method","delivery_notes","ship_address","ship_city","ship_region","ship_postcode","status","stripe_session_id","payment_intent_id"],
+      cols: ["Packed","When","Items","Amount","Customer","Email","Shipping","Status","Ref"],
       row: function(r){
         var amt = (typeof r.amount_total === "number") ? ("$"+(r.amount_total/100).toFixed(2)+" "+String(r.currency||"").toUpperCase()) : "";
-        var delivery;
-        if (r.delivery_method === "alternate") {
-          delivery = "<div class='brand'>Alternate delivery</div>"+
-            (r.mobile ? "<div class='muted'>☎ "+esc(r.mobile)+"</div>" : "")+
-            "<div class='muted'>"+esc(r.delivery_notes||"")+"</div>";
-        } else {
-          delivery = "<div class='muted'>"+[r.ship_address, r.ship_city, r.ship_postcode].filter(Boolean).map(esc).join(", ")+"</div>";
-        }
-        return "<td class='muted'>"+esc(fmtDate(r.created_at))+"</td>"+
-          "<td class='strong'>"+esc(r.items||"")+"</td>"+
+        return "<td class='pack'><input type='checkbox' class='pack-box' data-id='"+esc(r.id||"")+"'"+(r.packed?" checked":"")+" title='Mark as packed'></td>"+
+          "<td class='muted'>"+esc(fmtDate(r.created_at))+"</td>"+
+          "<td>"+renderItems(r.items)+"</td>"+
           "<td class='amount'>"+amt+"</td>"+
           "<td>"+esc(r.name||"")+"</td>"+
           "<td><a href='mailto:"+esc(r.email||"")+"'>"+esc(r.email||"")+"</a></td>"+
-          "<td>"+delivery+"</td>"+
+          "<td>"+renderShipping(r)+"</td>"+
           "<td>"+esc(r.status||"")+"</td>"+
           "<td class='ref'>"+esc(String(r.stripe_session_id||"").slice(-12))+"</td>";
       }
@@ -110,13 +122,80 @@
 
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
   function fmtDate(s){ if(!s) return ""; var d=new Date(s); return isNaN(d)?esc(s):d.toLocaleString(); }
+
+  // "Our Name" plus the designer scent it's inspired by. One label = our name,
+  // small gold line = inspiration.
+  function scentLabel(name){
+    name = String(name==null?"":name).trim();
+    if(!name) return "";
+    var ins = inspOf(name);
+    return esc(name) + (ins ? " <span class='insp'>· inspired by "+esc(ins)+"</span>" : "");
+  }
+
+  // Turn the webhook's order summary text into an itemised list that shows both
+  // our fragrance name and the scent it's inspired by. The summary is built in
+  // api/checkout.js as "N× Name" lines and "Sample Box (A, B, C…)" joined by "; ".
+  function renderItems(str){
+    str = String(str==null?"":str).trim();
+    if(!str) return "";
+    var parts = str.split(";").map(function(s){ return s.trim(); }).filter(Boolean);
+    return parts.map(function(p){
+      var box = p.match(/^Sample Box\s*\((.+)\)\s*$/i);
+      if(box){
+        var inner = box[1].split(",").map(function(s){ return s.trim(); }).filter(Boolean)
+          .map(function(n){ return "<div class='item-scent'>"+scentLabel(n)+"</div>"; }).join("");
+        return "<div class='item-line'><span class='strong'>Sample Box · 5 × 10ml</span>"+inner+"</div>";
+      }
+      if(/^Sample Box$/i.test(p)){
+        return "<div class='item-line'><span class='strong'>Sample Box · 5 × 10ml</span></div>";
+      }
+      var m = p.match(/^(\d+)\s*[×x]\s*(.+)$/);
+      if(m){
+        return "<div class='item-line'><span class='strong'>"+esc(m[1])+"× </span>"+scentLabel(m[2])+"</div>";
+      }
+      return "<div class='item-line'>"+scentLabel(p)+"</div>";
+    }).join("");
+  }
+
+  // Full shipping / delivery details: recipient, address (with region), and
+  // contact mobile — or the alternate-delivery instructions when chosen.
+  function renderShipping(r){
+    var isAlt = r.delivery_method === "alternate";
+    var out = "<div class='brand'>"+(isAlt ? "Alternate delivery" : "Australia Post")+"</div>";
+    if(r.name) out += "<div class='ship-name'>"+esc(r.name)+"</div>";
+    if(isAlt){
+      if(r.delivery_notes) out += "<div class='muted'>"+esc(r.delivery_notes)+"</div>";
+    } else {
+      if(r.ship_address) out += "<div class='muted'>"+esc(r.ship_address)+"</div>";
+      var loc = [r.ship_city, r.ship_region, r.ship_postcode].filter(Boolean).map(esc).join(", ");
+      if(loc) out += "<div class='muted'>"+loc+"</div>";
+    }
+    if(r.mobile) out += "<div class='muted'>☎ "+esc(r.mobile)+"</div>";
+    return out;
+  }
+
+  // Persist a packed toggle to Supabase via PATCH /api/orders (admin-gated).
+  function setPacked(id, checked, done){
+    var token = $("token").value.trim();
+    fetch("/api/orders", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify({ id: id, packed: checked })
+    })
+      .then(function(r){ return r.json().then(function(d){ return { status:r.status, d:d }; }); })
+      .then(function(res){ done(res.status===200 && res.d && res.d.ok); })
+      .catch(function(){ done(false); });
+  }
   function msg(t, err){ var m=$("msg"); m.textContent=t; m.className = "msg" + (err?" err":""); }
 
   function render(list){
     var v = VIEWS[tab];
     rowsData = list;
     $("head").innerHTML = v.cols.map(function(c){ return "<th>"+c+"</th>"; }).join("");
-    $("rows").innerHTML = list.map(function(r){ return "<tr>"+v.row(r)+"</tr>"; }).join("");
+    $("rows").innerHTML = list.map(function(r){
+      var cls = (tab==="orders" && r.packed) ? " class='packed'" : "";
+      return "<tr"+cls+">"+v.row(r)+"</tr>";
+    }).join("");
     $("table").hidden = list.length === 0;
     $("count").textContent = list.length + " " + (list.length===1 ? v.key.replace(/s$/,"") : v.key);
     $("refresh").hidden = false;
@@ -161,6 +240,28 @@
   Array.prototype.forEach.call(document.querySelectorAll(".tab"), function(b){
     b.addEventListener("click", function(){ switchTab(b.getAttribute("data-tab")); });
   });
+  // Toggle "packed" straight from the table (delegated — rows are re-rendered).
+  $("rows").addEventListener("change", function(e){
+    var box = e.target;
+    if(!box || !box.classList || !box.classList.contains("pack-box")) return;
+    var id = box.getAttribute("data-id");
+    var want = box.checked;
+    if(!id){ box.checked = !want; msg("This order has no id to update.", true); return; }
+    box.disabled = true;
+    setPacked(id, want, function(ok){
+      box.disabled = false;
+      if(ok){
+        var tr = box.parentNode && box.parentNode.parentNode;
+        if(tr && tr.classList) tr.classList.toggle("packed", want);
+        for(var i=0;i<rowsData.length;i++){ if(String(rowsData[i].id)===String(id)){ rowsData[i].packed = want; break; } }
+        msg("", false);
+      } else {
+        box.checked = !want; // revert on failure
+        msg("Could not save the packed state — check your token and try again.", true);
+      }
+    });
+  });
+
   $("load").addEventListener("click", load);
   $("refresh").addEventListener("click", load);
   $("csv").addEventListener("click", toCSV);

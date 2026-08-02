@@ -84,6 +84,39 @@ async function insert(table, row) {
   return data;
 }
 
+/* Patch one row in `table` matched by `id`, setting the columns in `patch`.
+ * Returns the updated row(s); throws on error. Used to toggle order fields like
+ * `packed` from the admin. */
+async function update(table, id, patch) {
+  var c = config();
+  if (!c.url || !c.key) throw new Error("Supabase is not configured.");
+
+  var url = c.url + "/rest/v1/" + encodeURIComponent(table) +
+    "?id=eq." + encodeURIComponent(id);
+
+  var resp, data;
+  try {
+    resp = await fetch(url, {
+      method: "PATCH",
+      headers: {
+        apikey: c.key,
+        Authorization: "Bearer " + c.key,
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(patch),
+    });
+  } catch (e) {
+    throw new Error("Could not reach Supabase.");
+  }
+  try { data = await resp.json(); } catch (e) { data = null; }
+  if (!resp.ok) {
+    var msg = (data && (data.message || data.error || data.hint)) || ("Supabase responded " + resp.status);
+    throw new Error(String(msg));
+  }
+  return data;
+}
+
 /* Read rows from `table`. opts: { order: "col.desc", limit: 200 }. Returns an
  * array; throws on error. */
 async function list(table, opts) {
@@ -112,4 +145,4 @@ async function list(table, opts) {
   return Array.isArray(data) ? data : [];
 }
 
-module.exports = { saveOrder: saveOrder, insert: insert, list: list, isConfigured: isConfigured };
+module.exports = { saveOrder: saveOrder, insert: insert, update: update, list: list, isConfigured: isConfigured };
