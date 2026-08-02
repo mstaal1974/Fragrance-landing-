@@ -47,6 +47,12 @@
   .pack-box:disabled { opacity:0.5; cursor:progress; }
   tr.packed td { opacity:0.5; }
   tr.packed td.pack { opacity:1; }
+  /* Tracking / consignment number */
+  td.track { white-space:nowrap; }
+  .track-box { background:var(--panel); border:1px solid var(--line); color:var(--cream); font-family:var(--mono); font-size:11px; padding:6px 8px; width:130px; outline:none; }
+  .track-box:focus { border-color:rgba(201,169,97,0.5); }
+  .track-box:disabled { opacity:0.5; cursor:progress; }
+  .track-link { display:inline-block; margin-left:6px; font-family:var(--mono); font-size:10px; letter-spacing:0.06em; text-transform:uppercase; }
 </style>
 </head>
 <body>
@@ -65,6 +71,7 @@
       <button class="go" id="load">View</button>
       <button class="ghost" id="refresh" hidden>Refresh</button>
       <button class="ghost" id="csv" hidden>Export CSV</button>
+      <button class="ghost" id="packlist" hidden>Print Pack List</button>
       <button class="ghost" id="backfill" hidden>Sync from Stripe</button>
     </div>
     <p class="msg" id="msg"></p>
@@ -104,8 +111,8 @@
     },
     orders: {
       endpoint: "/api/orders", key: "orders", heading: "Paid Orders",
-      csv: ["created_at","packed","amount_total","currency","items","name","email","mobile","delivery_method","delivery_notes","ship_address","ship_city","ship_region","ship_postcode","status","stripe_session_id","payment_intent_id"],
-      cols: ["Packed","When","Items","Amount","Customer","Email","Shipping","Status","Ref"],
+      csv: ["created_at","packed","tracking","amount_total","currency","items","name","email","mobile","delivery_method","delivery_notes","ship_address","ship_city","ship_region","ship_postcode","status","stripe_session_id","payment_intent_id"],
+      cols: ["Packed","When","Items","Amount","Customer","Email","Shipping","Tracking","Status","Ref"],
       row: function(r){
         var amt = (typeof r.amount_total === "number") ? ("$"+(r.amount_total/100).toFixed(2)+" "+String(r.currency||"").toUpperCase()) : "";
         return "<td class='pack'><input type='checkbox' class='pack-box' data-id='"+esc(r.id||"")+"'"+(r.packed?" checked":"")+" title='Mark as packed'></td>"+
@@ -115,6 +122,7 @@
           "<td>"+esc(r.name||"")+"</td>"+
           "<td><a href='mailto:"+esc(r.email||"")+"'>"+esc(r.email||"")+"</a></td>"+
           "<td>"+renderShipping(r)+"</td>"+
+          "<td class='track'>"+renderTracking(r)+"</td>"+
           "<td>"+esc(r.status||"")+"</td>"+
           "<td class='ref'>"+esc(String(r.stripe_session_id||"").slice(-12))+"</td>";
       }
@@ -175,18 +183,34 @@
     return out;
   }
 
-  // Persist a packed toggle to Supabase via PATCH /api/orders (admin-gated).
-  function setPacked(id, checked, done){
+  // Editable tracking / consignment number, with an Australia Post track link
+  // once a number is saved (posted orders only).
+  function renderTracking(r){
+    var t = r.tracking || "";
+    var input = "<input type='text' class='track-box' data-id='"+esc(r.id||"")+"' value='"+esc(t)+"' placeholder='Add tracking…' autocomplete='off'>";
+    var link = "";
+    if(t && r.delivery_method !== "alternate"){
+      link = "<a class='track-link' href='https://auspost.com.au/mypost/track/#/details/"+encodeURIComponent(t)+"' target='_blank' rel='noopener'>Track ↗</a>";
+    }
+    return input + link;
+  }
+
+  // Persist a PATCH to Supabase via /api/orders (admin-gated). `patch` is the
+  // field(s) to change, e.g. { packed:true } or { tracking:"AA123" }.
+  function saveOrder(id, patch, done){
     var token = $("token").value.trim();
+    var payload = { id: id };
+    for(var k in patch){ if(patch.hasOwnProperty(k)) payload[k] = patch[k]; }
     fetch("/api/orders", {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
-      body: JSON.stringify({ id: id, packed: checked })
+      body: JSON.stringify(payload)
     })
       .then(function(r){ return r.json().then(function(d){ return { status:r.status, d:d }; }); })
-      .then(function(res){ done(res.status===200 && res.d && res.d.ok); })
+      .then(function(res){ done(res.status===200 && res.d && res.d.ok, res.d && res.d.order); })
       .catch(function(){ done(false); });
   }
+  function setPacked(id, checked, done){ saveOrder(id, { packed: checked }, done); }
   function msg(t, err){ var m=$("msg"); m.textContent=t; m.className = "msg" + (err?" err":""); }
 
   function render(list){
@@ -202,6 +226,7 @@
     $("refresh").hidden = false;
     $("csv").hidden = list.length === 0;
     $("backfill").hidden = (tab !== "orders");
+    $("packlist").hidden = (tab !== "orders" || list.length === 0);
   }
 
   function load(){
@@ -230,18 +255,134 @@
     URL.revokeObjectURL(a.href);
   }
 
+  /* ---------- Pack list (printable / Save as PDF) ---------- */
+
+  function amountText(r){
+    return (typeof r.amount_total === "number") ? ("$"+(r.amount_total/100).toFixed(2)+" "+String(r.currency||"").toUpperCase()) : "";
+  }
+
+  // Items rendered as a tick-box picking checklist (our names + quantities;
+  // sample boxes expand to their 5 scents). No "inspired by" — staff pick by
+  // our product name.
+  function packItemsList(str){
+    str = String(str==null?"":str).trim();
+    if(!str) return "<ul class='items'><li><span class='cb'></span>(no item detail)</li></ul>";
+    var parts = str.split(";").map(function(s){ return s.trim(); }).filter(Boolean);
+    return "<ul class='items'>"+parts.map(function(p){
+      var box = p.match(/^Sample Box\s*\((.+)\)\s*$/i);
+      if(box){
+        var scents = box[1].split(",").map(function(s){ return s.trim(); }).filter(Boolean)
+          .map(function(n){ return "<li><span class='cb'></span>"+esc(n)+"</li>"; }).join("");
+        return "<li><span class='cb'></span><strong>Sample Box · 5 × 10ml</strong><ul class='sub'>"+scents+"</ul></li>";
+      }
+      if(/^Sample Box$/i.test(p)) return "<li><span class='cb'></span><strong>Sample Box · 5 × 10ml</strong></li>";
+      var m = p.match(/^(\d+)\s*[×x]\s*(.+)$/);
+      if(m) return "<li><span class='cb'></span><strong>"+esc(m[1])+" ×</strong> "+esc(m[2])+"</li>";
+      return "<li><span class='cb'></span>"+esc(p)+"</li>";
+    }).join("")+"</ul>";
+  }
+
+  function packShipping(r){
+    var isAlt = r.delivery_method === "alternate";
+    var lines = ["<strong>"+(isAlt ? "Alternate delivery" : "Australia Post")+"</strong>"];
+    if(r.name) lines.push(esc(r.name));
+    if(isAlt){ if(r.delivery_notes) lines.push(esc(r.delivery_notes)); }
+    else {
+      if(r.ship_address) lines.push(esc(r.ship_address));
+      var loc = [r.ship_city, r.ship_region, r.ship_postcode].filter(Boolean).map(esc).join(", ");
+      if(loc) lines.push(loc);
+    }
+    if(r.mobile) lines.push("Ph: "+esc(r.mobile));
+    if(r.email) lines.push(esc(r.email));
+    return lines.join("<br>");
+  }
+
+  function packListCSS(){
+    return "body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#111;margin:24px;}"+
+      ".ph{border-bottom:2px solid #111;padding-bottom:8px;margin-bottom:18px;}"+
+      ".ph h1{margin:0;font-size:22px;font-weight:700;}"+
+      ".pmeta{font-size:12px;color:#555;margin-top:4px;}"+
+      ".order{border:1px solid #bbb;border-radius:6px;padding:14px 16px;margin-bottom:14px;page-break-inside:avoid;}"+
+      ".ohead{display:flex;justify-content:space-between;font-size:12px;color:#555;margin-bottom:2px;}"+
+      ".onum{font-weight:700;color:#111;}.oref{font-family:monospace;}"+
+      ".ometa{font-size:12px;color:#555;margin-bottom:10px;}"+
+      ".cols{display:flex;gap:24px;}.citems{flex:1;}.cship{width:36%;font-size:13px;line-height:1.55;}"+
+      ".label{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#777;margin-bottom:6px;}"+
+      "ul.items{list-style:none;margin:0;padding:0;}ul.items li{font-size:14px;margin:6px 0;}"+
+      "ul.sub{list-style:none;margin:5px 0 6px 34px;padding:0;}ul.sub li{font-size:13px;color:#333;margin:3px 0;}"+
+      ".cb{width:13px;height:13px;border:1.5px solid #111;border-radius:2px;display:inline-block;vertical-align:middle;margin-right:9px;}"+
+      "@media print{body{margin:0;}.order{border-color:#999;}}";
+  }
+
+  function packListHTML(orders, when){
+    var cards = orders.map(function(r, idx){
+      return "<section class='order'>"+
+        "<div class='ohead'><span class='onum'>#"+(idx+1)+" / "+orders.length+"</span>"+
+          "<span class='oref'>"+esc(String(r.stripe_session_id||"").slice(-12))+"</span></div>"+
+        "<div class='ometa'>"+esc(fmtDate(r.created_at))+(amountText(r)?" · "+esc(amountText(r)):"")+"</div>"+
+        "<div class='cols'>"+
+          "<div class='citems'><div class='label'>Items to pack</div>"+packItemsList(r.items)+"</div>"+
+          "<div class='cship'><div class='label'>Ship to</div>"+packShipping(r)+"</div>"+
+        "</div></section>";
+    }).join("");
+    return "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Pack List — Maison Obsidian</title>"+
+      "<style>"+packListCSS()+"</style></head><body>"+
+      "<header class='ph'><h1>Pack List</h1><div class='pmeta'>Maison Obsidian · "+esc(when)+" · "+
+        orders.length+" order"+(orders.length===1?"":"s")+" to pack</div></header>"+
+      cards+"</body></html>";
+  }
+
+  // Open a printable pack list of orders still needing packing (not yet packed).
+  // A new window lets the browser Print or Save as PDF.
+  function packList(){
+    var pending = rowsData.filter(function(r){ return !r.packed; });
+    if(!pending.length){ msg("Nothing to pack — every order is marked packed.", false); return; }
+    var when = new Date().toLocaleString();
+    var win = window.open("", "_blank");
+    if(!win){ msg("Pop-up blocked — allow pop-ups for this site to print the pack list.", true); return; }
+    win.document.write(packListHTML(pending, when));
+    win.document.close();
+    win.focus();
+    setTimeout(function(){ try { win.print(); } catch(e){} }, 350);
+    msg(pending.length+" order"+(pending.length===1?"":"s")+" sent to the pack list.", false);
+  }
+
   function switchTab(next){
     if(next === tab) return;
     tab = next;
     Array.prototype.forEach.call(document.querySelectorAll(".tab"), function(b){ b.classList.toggle("active", b.getAttribute("data-tab")===tab); });
     $("heading").textContent = VIEWS[tab].heading;
-    $("table").hidden = true; $("rows").innerHTML=""; $("count").textContent=""; $("csv").hidden=true; $("refresh").hidden=true; $("backfill").hidden=true;
+    $("table").hidden = true; $("rows").innerHTML=""; $("count").textContent=""; $("csv").hidden=true; $("refresh").hidden=true; $("backfill").hidden=true; $("packlist").hidden=true;
     if($("token").value.trim()) load(); // auto-load the other tab if already authed
   }
 
   Array.prototype.forEach.call(document.querySelectorAll(".tab"), function(b){
     b.addEventListener("click", function(){ switchTab(b.getAttribute("data-tab")); });
   });
+  // Save an edited tracking number (fires on blur / Enter — delegated).
+  $("rows").addEventListener("change", function(e){
+    var input = e.target;
+    if(!input || !input.classList || !input.classList.contains("track-box")) return;
+    var id = input.getAttribute("data-id");
+    if(!id){ msg("This order has no id to update.", true); return; }
+    var val = input.value.trim();
+    var rec = null;
+    for(var i=0;i<rowsData.length;i++){ if(String(rowsData[i].id)===String(id)){ rec = rowsData[i]; break; } }
+    input.disabled = true;
+    saveOrder(id, { tracking: val }, function(ok, order){
+      input.disabled = false;
+      if(ok){
+        var saved = (order && typeof order.tracking !== "undefined") ? (order.tracking || "") : val;
+        if(rec) rec.tracking = saved;
+        var td = input.parentNode;
+        if(td){ td.innerHTML = renderTracking({ id:id, tracking:saved, delivery_method:(rec && rec.delivery_method) }); }
+        msg("", false);
+      } else {
+        msg("Could not save the tracking number — check your token and try again.", true);
+      }
+    });
+  });
+
   // Toggle "packed" straight from the table (delegated — rows are re-rendered).
   $("rows").addEventListener("change", function(e){
     var box = e.target;
@@ -293,6 +434,7 @@
   $("load").addEventListener("click", load);
   $("refresh").addEventListener("click", load);
   $("csv").addEventListener("click", toCSV);
+  $("packlist").addEventListener("click", packList);
   $("backfill").addEventListener("click", backfill);
   $("token").addEventListener("keydown", function(e){ if(e.key==="Enter") load(); });
   try { var saved = localStorage.getItem("mo_admin_token"); if(saved){ $("token").value = saved; } } catch(e){}

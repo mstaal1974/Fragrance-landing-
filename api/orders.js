@@ -11,9 +11,9 @@
  *           (or ?token=<ADMIN_TOKEN>)
  * Response: 200 { ok:true, orders:[...] }  |  401/5xx { ok:false, error }
  *
- * The admin can also toggle an order's fulfilment flag:
- * Request:  PATCH /api/orders   { id:"<uuid>", packed:true|false }
- *           (same Bearer <ADMIN_TOKEN> gate)
+ * The admin can also update an order's fulfilment fields:
+ * Request:  PATCH /api/orders   { id:"<uuid>", packed:true|false, tracking:"AA123..." }
+ *           (same Bearer <ADMIN_TOKEN> gate; send either/both field)
  * Response: 200 { ok:true, order:{...} }  |  4xx/5xx { ok:false, error }
  */
 
@@ -53,6 +53,10 @@ module.exports = async function handler(req, res) {
 
     var patch = {};
     if (typeof body.packed === "boolean") patch.packed = body.packed;
+    if (typeof body.tracking === "string") {
+      var tracking = body.tracking.trim().slice(0, 120);
+      patch.tracking = tracking || null; // empty string clears it
+    }
     if (!Object.keys(patch).length) return res.status(400).json({ ok: false, error: "Nothing to update." });
 
     var updated;
