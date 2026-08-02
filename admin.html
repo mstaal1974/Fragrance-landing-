@@ -65,6 +65,7 @@
       <button class="go" id="load">View</button>
       <button class="ghost" id="refresh" hidden>Refresh</button>
       <button class="ghost" id="csv" hidden>Export CSV</button>
+      <button class="ghost" id="backfill" hidden>Sync from Stripe</button>
     </div>
     <p class="msg" id="msg"></p>
     <div class="count" id="count"></div>
@@ -200,6 +201,7 @@
     $("count").textContent = list.length + " " + (list.length===1 ? v.key.replace(/s$/,"") : v.key);
     $("refresh").hidden = false;
     $("csv").hidden = list.length === 0;
+    $("backfill").hidden = (tab !== "orders");
   }
 
   function load(){
@@ -233,7 +235,7 @@
     tab = next;
     Array.prototype.forEach.call(document.querySelectorAll(".tab"), function(b){ b.classList.toggle("active", b.getAttribute("data-tab")===tab); });
     $("heading").textContent = VIEWS[tab].heading;
-    $("table").hidden = true; $("rows").innerHTML=""; $("count").textContent=""; $("csv").hidden=true; $("refresh").hidden=true;
+    $("table").hidden = true; $("rows").innerHTML=""; $("count").textContent=""; $("csv").hidden=true; $("refresh").hidden=true; $("backfill").hidden=true;
     if($("token").value.trim()) load(); // auto-load the other tab if already authed
   }
 
@@ -262,9 +264,36 @@
     });
   });
 
+  // Pull paid Checkout Sessions straight from Stripe into Supabase — repairs
+  // orders that never reached the webhook. Idempotent, so safe to re-run.
+  function backfill(){
+    var token = $("token").value.trim();
+    if(!token){ msg("Enter the admin token.", true); return; }
+    if(!window.confirm("Sync paid orders from Stripe into the admin? This is safe to run repeatedly.")) return;
+    $("backfill").disabled = true;
+    msg("Syncing from Stripe…", false);
+    fetch("/api/backfill", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+      body: JSON.stringify({ limit: 300 })
+    })
+      .then(function(r){ return r.json().then(function(d){ return { status:r.status, d:d }; }); })
+      .then(function(res){
+        $("backfill").disabled = false;
+        if(res.status===200 && res.d && res.d.ok){
+          msg("Synced — "+res.d.saved+" paid order"+(res.d.saved===1?"":"s")+" written (scanned "+res.d.scanned+").", false);
+          load();
+        } else {
+          msg((res.d && res.d.error) || "Sync failed.", true);
+        }
+      })
+      .catch(function(){ $("backfill").disabled = false; msg("Network error during sync.", true); });
+  }
+
   $("load").addEventListener("click", load);
   $("refresh").addEventListener("click", load);
   $("csv").addEventListener("click", toCSV);
+  $("backfill").addEventListener("click", backfill);
   $("token").addEventListener("keydown", function(e){ if(e.key==="Enter") load(); });
   try { var saved = localStorage.getItem("mo_admin_token"); if(saved){ $("token").value = saved; } } catch(e){}
 })();
