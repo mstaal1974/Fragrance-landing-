@@ -1,6 +1,6 @@
 id,name,inspired_by,family,price_aud,size,top_notes,heart_notes,base_notes
 f1,Smoky Obsidian,Tom Ford - Black Lacquer,him,12,10ml,"Black Ink, Rum","Leather, Elemi Resin","Ebony Wood, Olibanum"
-f2,Velvet Absolute,YSL - MYSLF L'Absolu,him,12,10ml,"Bergamot, Black Pepper",Orange Blossom,"Amber, Patchouli"
+f2,Velvet Absolute,YSL - MYSLF L'Absolu,him,12,10ml,"Ginger, Bergamot, Cardamom","Orange Blossom, Jasmine, Floral Accord","Patchouli, Ambrofix, Woods"
 f3,Golden Aura,Burberry - Goddess,her,12,10ml,"Vanilla Infusion, Lavender",Vanilla Caviar,Vanilla Absolute
 f4,Midnight Velvet,YSL - Black Opium,her,12,10ml,"Pear, Pink Pepper","Coffee, Jasmine","Vanilla, Patchouli, Cedar"
 f5,Fiery Spice,Viktor&Rolf - Spicebomb Extreme,him,12,10ml,"Black Pepper, Pimento","Cinnamon, Cumin","Tobacco, Vanilla"
@@ -31,3 +31,18 @@ f29,Sovereign Flora,YSL - Libre,her,12,10ml,"Lavender, Mandarin Orange","Orange 
 f30,Parisian Charm,Coco Chanel - Mademoiselle,her,12,10ml,"Orange, Bergamot","Rose, Jasmine","Patchouli, White Musk, Vetiver"
 f31,Nightbloom Seduction,Dior - Addict,her,12,10ml,"Blackberry, Mandarin Leaf","Night-blooming Cereus, Jasmine","Bourbon Vanilla, Sandalwood"
 f32,Crystal Water,Issey Miyake - Eau D'Issey,unisex,12,10ml,"Lotus, Freesia, Melon","Lily, Lily-of-the-Valley","Musk, Cedarwood, Amber"
+f33,Velvet Bloom,Viktor&Rolf - Flowerbomb,her,12,10ml,"Bergamot, Tea, Osmanthus","Jasmine Sambac, Centifolia Rose, Freesia, Orchid","Patchouli, Vanilla, Amber, Musk"
+f34,Bare Musk,Narciso Rodriguez - For Her,her,12,10ml,"Rose, Peach","Musk, Amber","Patchouli, Sandalwood"
+f35,Roman Jasmine,Valentino - Donna Born In Roma,her,12,10ml,"Blackcurrant, Bergamot","Jasmine Grandiflorum, Jasmine Sambac, Jasmine Absolute","Bourbon Vanilla, Cashmeran, Guaiac Wood"
+f36,Wild Ginger,Hermès - Twilly d'Hermès,her,12,10ml,Ginger,Tuberose,Sandalwood
+f37,Dark Berry,Burberry - Her Intense,her,12,10ml,"Red Fruits, Blackberry, Blackcurrant","Jasmine, Violet, Rose","Benzoin, Amber, Musk"
+f38,Midnight Ember,Viktor&Rolf - Spicebomb Dark Leather,him,12,10ml,"Black Pepper, Nutmeg","Incense, Cinnamon","Dark Leather, Tobacco"
+f39,Golden Vanilla,Parfums de Marly - Althaïr,him,12,10ml,"Bergamot, Mandarin, Elemi","Orange Blossom, Cinnamon, Cardamom","Bourbon Vanilla, Guaiacwood, Praline"
+f40,Black Rum,Bvlgari - Man In Black,him,12,10ml,"Rum, Spices, Cardamom","Leather, Tuberose, Iris","Tonka Bean, Benzoin, Guaiac Wood"
+f41,Smoked Pineapple,Creed - Aventus,him,12,10ml,"Pineapple, Bergamot, Blackcurrant","Birch, Patchouli, Jasmine","Oakmoss, Musk, Ambergris"
+f42,Sunlit Amber,Tom Ford - Soleil Blanc,unisex,12,10ml,"Bergamot, Cardamom, Pistachio","Ylang-Ylang, Tuberose, Jasmine Sambac","Coconut, Amber, Benzoin, Tonka Bean"
+f43,Dubai Oud,The Spirit of Dubai - Oud,unisex,12,10ml,"Saffron, Pineapple, Black Pepper","Agarwood (Oud), Damask Rose, Smoked Olibanum","Indian Oud, Leather, Tobacco"
+f44,Crimson Crystal,Maison Francis Kurkdjian - Baccarat Rouge 540,unisex,12,10ml,"Saffron, Jasmine, Bitter Almond","Amberwood, Ambergris, Cashmeran","Fir Resin, Cedarwood, Musk"
+f45,Spiced Honey,Amouage - Sindbad,unisex,12,10ml,"Honey, Tangerine, Cardamom","Cappuccino, Black Tea, Davana","Tonka Bean, Vanilla, Cedarwood"
+f46,Smoked Agarwood,Tom Ford - Oud Wood Intense,unisex,12,10ml,"Ginger, Juniper, Bergamot","Agarwood (Oud), Cypriol, Sandalwood","Castoreum, Vetiver, Amber"
+f47,Savannah Leather,Memo Paris - African Leather,unisex,12,10ml,"Cardamom, Geranium, Pink Pepper","Rose, Patchouli, Cinnamon","Leather, Oud, Amber"
