@@ -16,7 +16,7 @@ shipping cost.
 | --- | --- |
 | `index.html` | Page markup: header, hero, sample‑box builder, three collections, checkout, confirmation, cart drawer. |
 | `styles.css` | All styling, faithful to the Claude Design handoff (dark obsidian palette, Cormorant Garamond / Hanken Grotesk / Space Mono). |
-| `data.js` | The 33‑scent fragrance library (`window.FRAGS`). |
+| `data.js` | The 47‑scent fragrance library (`window.FRAGS`). |
 | `app.js` | Interactive logic — cart, sample‑box builder, drawer, checkout flow, live shipping, Stripe redirect, order confirmation. |
 | `api/checkout.js` | Vercel serverless function that creates a Stripe Checkout Session (prices recomputed server‑side) and returns the hosted payment URL. |
 | `api/order.js` | Vercel serverless function that verifies a Stripe session on return, so the confirmation screen only shows after a real payment. |
@@ -224,8 +224,9 @@ merchandise subtotal only.
 
 Each card layers the real Maison Obsidian product photograph over the
 design's gradient "liquid" swatch, via the `img` field on entries in
-`data.js` (e.g. `img:"assets/erosian-desire.png"`). The original 32 scents all
-have a photo wired in; the product images have transparent backgrounds so the
-bottles sit directly on the dark cards. Velvet Bloom (`f33`) has no photo yet,
-so its card falls back to the gradient swatch alone. To add or swap one, drop a
-PNG into `assets/` and set its `img` field.
+`data.js` (e.g. `img:"assets/erosian-desire.png"`). The original 32 scents
+(`f1`–`f32`) all have a photo wired in; the product images have transparent
+backgrounds so the bottles sit directly on the dark cards. The newer arrivals
+(`f33`–`f47`) have no photo yet, so their cards fall back to the gradient
+swatch alone. To add or swap one, drop a PNG into `assets/` and set its `img`
+field.
