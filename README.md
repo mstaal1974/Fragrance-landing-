@@ -154,9 +154,11 @@ search box) and filtered client‑side, so it never slows the initial page load.
 
 The same search also appears as a **popup that auto‑opens once per session,
 ~10 seconds** after load — only while the visitor is still browsing the shop and
-nothing else is open (a `sessionStorage` flag stops it reappearing). The inline
-section stays in place regardless; the popup is an additional prompt, not a
-replacement.
+nothing else is open (a `sessionStorage` flag stops it reappearing). It is
+**desktop only**: phones and tablets never get it (viewport ≤ 760px, or a coarse
+pointer on anything ≤ 1040px), since the popup fills a small screen and an
+uninvited one interrupts rather than invites. The inline section stays in place
+on every device; the popup is an additional prompt, not a replacement.
 
 Picking a result opens a request modal (name, email, quantity, note). Submitting
 POSTs to `api/request.js`, which validates and stores the enquiry in Supabase's
