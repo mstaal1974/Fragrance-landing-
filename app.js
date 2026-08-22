@@ -978,12 +978,22 @@
   wire();
   handleReturn(); // resume confirmation / cancellation after a Stripe redirect
 
+  // Phones and tablets never get the auto-popup: it covers the whole screen
+  // there, so an uninvited one interrupts rather than invites. Small viewport,
+  // or a touch-first pointer on anything narrower than a desktop.
+  function isMobileDevice() {
+    if (!window.matchMedia) return false;
+    return window.matchMedia("(max-width: 760px)").matches ||
+      (window.matchMedia("(pointer: coarse)").matches && window.matchMedia("(max-width: 1040px)").matches);
+  }
+
   // Invite visitors to search the library — once per session, after 10s, and
   // only if they're still browsing and nothing else is open. The inline
-  // Request section stays put regardless.
+  // Request section stays put regardless, on every device.
   try {
-    if (!sessionStorage.getItem("mo_search_shown")) {
+    if (!isMobileDevice() && !sessionStorage.getItem("mo_search_shown")) {
       setTimeout(function () {
+        if (isMobileDevice()) return; // rotated or resized into a phone-sized view
         if (searchOpen || requestFrag || state.productId || state.drawerOpen || state.view !== "shop") return;
         try { sessionStorage.setItem("mo_search_shown", "1"); } catch (e) { /* ignore */ }
         openSearch();
